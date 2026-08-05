@@ -1,172 +1,1077 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OKF — Storefront · a live OKF bundle</title>
-<meta property="og:title" content="OKF — Storefront · a live OKF bundle">
-<meta property="og:description" content="8 concepts · interactive Open Knowledge Format knowledge graph">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<meta property="og:image" content="https://scaccogatto.github.io/okf-skills/assets/og.png">
-<meta name="twitter:image" content="https://scaccogatto.github.io/okf-skills/assets/og.png">
-<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.12/dist/purify.min.js" integrity="sha384-piCcpDdJ7qVeK4Tv8Z6Hpcr3ZBIgP16TxQTPVfsLFdZ5uDgwc3Y8Ho7oUnqf12qu" crossorigin="anonymous"></script>
-<style>
- :root{--bg:#0e0f13;--panel:#16181f;--line:#262a35;--fg:#e6e8ee;--mut:#9aa3b2;--accent:#8ab4ff}
- *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
-   font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- /* The row must be stated. Left implicit it sizes to `auto`, i.e. to the tallest
-    item — a long concept body then stretched #side past the viewport and the page
-    grew its own scrollbar on top of the panel's, which in turn forced a spurious
-    horizontal one. Pinning the row to 100% keeps the panel scrolling inside. */
- #app{display:grid;grid-template-columns:1fr 400px;grid-template-rows:100%;height:100vh}
- #cy{width:100%;height:100%}
- #side{border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:18px}
- header{position:absolute;top:0;left:0;padding:14px 18px;z-index:5;pointer-events:none}
- h1{font-size:15px;margin:0;font-weight:650} .sub{color:var(--mut);font-size:12px;margin-top:2px}
- #bar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:5;display:flex;gap:8px}
- #bar input,#bar select{background:var(--panel);border:1px solid var(--line);color:var(--fg);
-   border-radius:8px;padding:8px 10px;outline:none;font-size:13px}
- #search{width:min(300px,32vw)}
- #legend{position:absolute;bottom:14px;left:18px;z-index:5;display:flex;flex-wrap:wrap;gap:6px;max-width:60vw}
- .chip{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
-   border-radius:20px;padding:3px 10px;font-size:12px;color:var(--mut);cursor:pointer;user-select:none}
- .chip.off{opacity:.4} .dot{width:10px;height:10px;border-radius:50%}
- #side h2{font-size:17px;margin:.2em 0} .type{display:inline-block;border-radius:6px;padding:2px 8px;
-   font-size:11px;font-weight:600;color:#0e0f13} .desc{color:var(--mut);margin:8px 0 12px}
- .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
- .tag{background:#1d2230;border:1px solid var(--line);border-radius:6px;padding:1px 8px;font-size:11px;color:var(--mut)}
- .meta{margin:10px 0;font-size:12px;color:var(--mut)} .meta div{padding:1px 0} .meta b{color:var(--fg);font-weight:600}
- .sig{color:var(--mut)}
- .badges{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
- .badge{border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;border:1px solid}
- .t-unverified{color:#9aa3b2;border-color:#3a4150;background:#1d2230}
- .t-machine{color:#8ab4ff;border-color:#2b4570;background:#141c2b}
- .t-human{color:#4ade80;border-color:#276b45;background:#12211a}
- .b-stale{color:#fca5a5;border-color:#7f2b2b;background:#241416}
- .b-deprecated{color:#fbbf24;border-color:#7a5312;background:#241d10}
- .rel{margin:10px 0} .rel h4{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
- .rel a{display:block;color:var(--accent);cursor:pointer;font-size:13px;padding:1px 0;text-decoration:none}
- .rel a:hover{text-decoration:underline}
- .body{border-top:1px solid var(--line);padding-top:12px;margin-top:12px} .body table{border-collapse:collapse;display:block;overflow:auto}
- .body td,.body th{border:1px solid var(--line);padding:4px 8px} .body code{background:#1d2230;padding:1px 5px;border-radius:4px}
- .body pre{background:#1d2230;padding:10px;border-radius:8px;overflow:auto} .body img{max-width:100%}
- .empty{color:var(--mut)} a{color:var(--accent)}
- .src{pointer-events:auto;color:var(--accent);margin-left:10px;text-decoration:none} .src:hover{text-decoration:underline}
-</style></head><body>
-<div id="app"><div id="cy"></div><div id="side"><p class="empty">Click a concept to inspect it.</p></div></div>
-<header><h1>Storefront · a live OKF bundle</h1><div class="sub">8 concepts · 26 links · OKF v0.2 <a class="src" href="https://github.com/scaccogatto/okf-skills" target="_blank" rel="noopener">source ↗</a></div></header>
-<div id="bar">
- <input id="search" placeholder="search concepts…">
- <select id="type"><option value="">all types</option></select>
- <select id="layout">
-  <option value="cose">force</option><option value="concentric">concentric</option>
-  <option value="breadthfirst">breadth-first</option><option value="circle">circle</option><option value="grid">grid</option>
- </select>
-</div>
-<div id="legend"></div>
-<script>
-const NODES=[{"id": "datasets/orders-db", "type": "Schema", "title": "Orders database", "description": "Postgres schema of record for orders, line items, and charge attempts.", "tags": ["postgres", "schema", "data"], "group": "datasets", "sz": 29, "status": "stable", "stale_after": "", "generated": {"by": "process:schema-export", "at": "2026-06-17T08:00:00Z"}, "verified": [], "sources": [{"title": "Postgres migrations", "resource": "https://github.com/acme/storefront/tree/main/db/migrations", "cid": null, "author": "team:checkout", "usage_count": null, "usage_window": "", "last_modified": "2026-06-17"}], "body": "# Overview\n\nThe system of record written by [Orders API](/services/orders-api.md) and\n[Payments API](/services/payments-api.md). Orders move through a strict status\nmachine; charge attempts are append-only so refunds and retries stay auditable.\n\n# Tables\n\n| Table          | Key            | Notes                                   |\n|----------------|----------------|-----------------------------------------|\n| `orders`       | `id`           | One row per checkout; carries `status`. |\n| `line_items`   | `id`           | FK \u2192 `orders.id`; product + quantity.   |\n| `charges`      | `id`           | FK \u2192 `orders.id`; append-only attempts. |\n\n# Order status\n\n```\npending \u2500\u2500\u25b6 paid \u2500\u2500\u25b6 fulfilled\n   \u2502                    \u2502\n   \u2514\u2500\u2500\u25b6 failed          \u2514\u2500\u2500\u25b6 refunded\n```\n\n# Invariants\n\n* An order in `paid` has exactly one successful `charges` row.\n* `charges` is never updated in place \u2014 voids/refunds insert new rows.\n\nTables and constraints are read straight from the migrations.[^migrations]\n\n[^migrations]: Postgres migrations"}, {"id": "decisions/event-driven", "type": "Decision", "title": "Event-driven service communication", "description": "Services publish domain events instead of calling each other's side effects directly.", "tags": ["adr", "architecture", "events"], "group": "decisions", "sz": 27, "status": "stable", "stale_after": "", "generated": {"by": "human:sam", "at": "2026-06-15T16:40:00Z"}, "verified": [{"by": "human:dana", "at": "2026-06-16T08:15:00Z"}], "sources": [], "body": "# Context\n\nEarly on, [Orders API](/services/orders-api.md) called email, analytics, and\ninventory inline at checkout. Each new consumer made checkout slower and more\nfragile \u2014 one slow dependency failed the whole order.\n\n# Decision\n\nServices own their data and publish **domain events** (`order.paid`,\n`order.failed`) to a broker. Consumers subscribe; producers never know who\nlistens. [Payments API](/services/payments-api.md) stays a synchronous call\nbecause checkout cannot complete without a charge result.\n\n# Consequences\n\n* New consumers attach without touching the checkout path.\n* Eventual consistency is now an explicit, documented trade-off.\n* Each service needs an idempotent event handler."}, {"id": "decisions/use-okf", "type": "Decision", "title": "Adopt OKF for shared knowledge", "description": "Use the Open Knowledge Format as the single, portable home for project knowledge.", "tags": ["adr", "knowledge", "process"], "group": "decisions", "sz": 26, "status": "stable", "stale_after": "", "generated": {"by": "human:dana", "at": "2026-06-14T09:30:00Z"}, "verified": [{"by": "human:sam", "at": "2026-06-14T16:00:00Z"}], "sources": [], "body": "# Context\n\nKnowledge about our systems was scattered across wikis, code comments, and\npeople's heads. Agents and humans both needed a single, durable source.\n\n# Decision\n\nAdopt OKF: a `.okf/` bundle of markdown + YAML frontmatter, versioned with the\ncode it describes. See the [Auth API](/services/auth-api.md) concept for an\nexample of a code-derived entry.\n\n# Consequences\n\n* Knowledge is diffable, portable, and readable without tooling.\n* No vendor lock-in; no required runtime.\n* Curation happens in pull requests, like code."}, {"id": "metrics/checkout-conversion", "type": "Metric", "title": "Checkout conversion", "description": "Share of started checkouts that end in a paid order.", "tags": ["kpi", "growth", "payments"], "group": "metrics", "sz": 28, "status": "stable", "stale_after": "2026-12-31", "generated": {"by": "human:dana", "at": "2026-06-18T12:00:00Z"}, "verified": [{"by": "human:sam", "at": "2026-06-19T09:00:00Z"}], "sources": [{"title": "Orders database", "resource": "/datasets/orders-db.md", "cid": "datasets/orders-db", "author": "team:checkout", "usage_count": null, "usage_window": "", "last_modified": "2026-06-17"}], "body": "# Definition\n\n```\ncheckout_conversion = orders[status = paid] / checkouts_started\n```\n\nMeasured per hour from the [Orders API](/services/orders-api.md) checkout funnel;\nthe denominator is `checkout.started` events, the numerator is `order.paid`. Both\nare counted off the [orders database](/datasets/orders-db.md) \u2014 recorded in\n`sources`, so the derivation shows up as an edge in the graph.\n\n# Targets\n\n| Window  | Target | Page on-call below |\n|---------|--------|--------------------|\n| Hourly  | \u2265 96%  | 90%                |\n| 28-day  | \u2265 98%  | \u2014                  |\n\n# Watch-outs\n\nA sudden drop usually means failed charges in\n[Payments API](/services/payments-api.md), not buyer behaviour \u2014 start with the\n[Payment failures runbook](/runbooks/payment-failures.md) before assuming a\nfunnel regression."}, {"id": "runbooks/payment-failures", "type": "Runbook", "title": "Payment failures runbook", "description": "Diagnose and mitigate a spike in declined or failed charges.", "tags": ["oncall", "payments", "incident"], "group": "runbooks", "sz": 29, "status": "stable", "stale_after": "2026-12-31", "generated": {"by": "human:sam", "at": "2026-06-18T07:30:00Z"}, "verified": [], "sources": [], "body": "# Trigger\n\nCharge success rate (tracked by the\n[Checkout conversion metric](/metrics/checkout-conversion.md)) drops below 95%\nfor 5 minutes, or `order.failed` events spike.\n\n# Diagnose\n\n1. Check [Payments API](/services/payments-api.md) `/healthz` and processor\n   status page \u2014 is this us or upstream?\n2. Tail charge attempts in the [Orders database](/datasets/orders-db.md):\n   ```sql\n   SELECT decline_code, count(*) FROM charges\n   WHERE created_at > now() - interval '15 min' AND status = 'failed'\n   GROUP BY 1 ORDER BY 2 DESC;\n   ```\n3. A single dominant `decline_code` \u2192 processor-side. Many varied codes \u2192 likely\n   our integration (expired key, bad idempotency).\n\n# Mitigate\n\n* **Processor outage:** enable the queue-and-retry flag; orders go `pending`, not\n  `failed`, and drain when the processor recovers.\n* **Expired signing key:** rotate via [Auth API](/services/auth-api.md) and\n  redeploy Payments.\n\n# Verify\n\nSuccess rate recovers above 99% and the `pending` backlog drains to zero."}, {"id": "services/auth-api", "type": "Service", "title": "Auth API", "description": "Issues and verifies short-lived JWTs for every Storefront service.", "tags": ["auth", "security", "platform"], "group": "services", "sz": 29, "status": "stable", "stale_after": "", "generated": {"by": "doc_agent/1.0", "at": "2026-06-14T10:00:00Z"}, "verified": [{"by": "human:dana", "at": "2026-06-20T09:00:00Z"}], "sources": [{"title": "Auth service README", "resource": "https://github.com/acme/storefront/tree/main/services/auth", "cid": null, "author": "team:platform", "usage_count": null, "usage_window": "", "last_modified": "2026-06-12"}], "body": "# Overview\n\nStateless HTTP service that issues signed JWTs and verifies them for the rest of\nthe platform. It is the trust root for [Orders API](/services/orders-api.md) and\n[Payments API](/services/payments-api.md): both reject any request whose token\nthis service did not sign. Knowledge here is derived from the service source and\nits README,[^auth-readme] a worked example of the\n[OKF adoption decision](/decisions/use-okf.md).\n\n# Endpoints\n\n| Method | Path      | Description                                  |\n|--------|-----------|----------------------------------------------|\n| `POST` | `/token`  | Exchange credentials for a short-lived JWT.  |\n| `POST` | `/verify` | Validate a JWT and return its claims.        |\n| `POST` | `/revoke` | Add a token's `jti` to the deny list.        |\n\n# Claims\n\n```json\n{ \"sub\": \"user_42\", \"scope\": [\"orders:write\", \"payments:read\"], \"exp\": 1718360000 }\n```\n\nTokens live 15 minutes; clients refresh against `/token`. Signing keys rotate\nweekly and are pinned by `kid` in the JWT header.\n\n[^auth-readme]: Auth service README"}, {"id": "services/orders-api", "type": "Service", "title": "Orders API", "description": "Owns the order lifecycle \u2014 cart checkout, fulfilment, and refunds.", "tags": ["orders", "checkout", "platform"], "group": "services", "sz": 31, "status": "stable", "stale_after": "", "generated": {"by": "doc_agent/1.0", "at": "2026-06-16T09:20:00Z"}, "verified": [{"by": "human:dana", "at": "2026-06-20T09:00:00Z"}, {"by": "process:contract-tests", "at": "2026-06-26T02:00:00Z"}], "sources": [{"title": "Orders service README", "resource": "https://github.com/acme/storefront/tree/main/services/orders", "cid": null, "author": "team:checkout", "usage_count": null, "usage_window": "", "last_modified": "2026-06-15"}], "body": "# Overview\n\nThe heart of the storefront. Authenticates callers through the\n[Auth API](/services/auth-api.md), charges them through the\n[Payments API](/services/payments-api.md), and persists state to the\n[Orders database](/datasets/orders-db.md). It emits domain events rather than\ncalling downstream consumers directly \u2014 see the\n[event-driven decision](/decisions/event-driven.md).\n\n# Endpoints\n\n| Method | Path                 | Description                                |\n|--------|----------------------|--------------------------------------------|\n| `POST` | `/orders`            | Create an order from a cart and charge it. |\n| `GET`  | `/orders/{id}`       | Fetch an order and its line items.         |\n| `POST` | `/orders/{id}/refund`| Refund an order (full or partial).         |\n\n# Checkout flow\n\n1. Verify the caller's token (`scope: orders:write`).\n2. Reserve stock and write a `pending` order to the\n   [Orders database](/datasets/orders-db.md).\n3. Call [Payments API](/services/payments-api.md) `POST /charges`.\n4. On success, mark the order `paid` and publish `order.paid`.\n\nThis conversion funnel is tracked by the\n[Checkout conversion metric](/metrics/checkout-conversion.md).\n\n# Events\n\n| Event         | When                          |\n|---------------|-------------------------------|\n| `order.paid`  | Payment captured successfully |\n| `order.failed`| Charge declined or timed out  |\n\nEndpoints and events are transcribed from the service README.[^orders-readme]\n\n[^orders-readme]: Orders service README"}, {"id": "services/payments-api", "type": "Service", "title": "Payments API", "description": "Captures charges and refunds via the upstream payment processor.", "tags": ["payments", "money", "platform"], "group": "services", "sz": 30, "status": "stable", "stale_after": "", "generated": {"by": "doc_agent/1.0", "at": "2026-06-16T11:05:00Z"}, "verified": [], "sources": [{"title": "Payments service README", "resource": "https://github.com/acme/storefront/tree/main/services/payments", "cid": null, "author": "team:payments", "usage_count": null, "usage_window": "", "last_modified": "2026-06-16"}], "body": "# Overview\n\nWraps the third-party payment processor behind a stable internal contract. Called\nsynchronously by the [Orders API](/services/orders-api.md) during checkout, it\nauthenticates the caller through the [Auth API](/services/auth-api.md) and records\nevery charge attempt in the [Orders database](/datasets/orders-db.md). Like the\nrest of the platform it follows the\n[event-driven decision](/decisions/event-driven.md) for downstream notification.\n\n# Endpoints\n\n| Method | Path                | Description                               |\n|--------|---------------------|-------------------------------------------|\n| `POST` | `/charges`          | Capture a charge for an order.            |\n| `POST` | `/charges/{id}/void`| Void or refund a prior charge.            |\n| `POST` | `/webhooks/processor`| Ingest processor status callbacks.       |\n\n# Idempotency\n\nEvery `POST /charges` requires an `Idempotency-Key` header (the order id). Retries\nwith the same key return the original result rather than double-charging \u2014 the\nsingle most important invariant in the service.[^payments-readme]\n\n[^payments-readme]: Payments service README\n\n# Operations\n\nWhen charge success rate drops, follow the\n[Payment failures runbook](/runbooks/payment-failures.md)."}], EDGES=[{"source": "datasets/orders-db", "target": "services/orders-api"}, {"source": "datasets/orders-db", "target": "services/payments-api"}, {"source": "decisions/event-driven", "target": "services/orders-api"}, {"source": "decisions/event-driven", "target": "services/payments-api"}, {"source": "decisions/use-okf", "target": "services/auth-api"}, {"source": "metrics/checkout-conversion", "target": "services/orders-api"}, {"source": "metrics/checkout-conversion", "target": "datasets/orders-db"}, {"source": "metrics/checkout-conversion", "target": "services/payments-api"}, {"source": "metrics/checkout-conversion", "target": "runbooks/payment-failures"}, {"source": "runbooks/payment-failures", "target": "metrics/checkout-conversion"}, {"source": "runbooks/payment-failures", "target": "services/payments-api"}, {"source": "runbooks/payment-failures", "target": "datasets/orders-db"}, {"source": "runbooks/payment-failures", "target": "services/auth-api"}, {"source": "services/auth-api", "target": "services/orders-api"}, {"source": "services/auth-api", "target": "services/payments-api"}, {"source": "services/auth-api", "target": "decisions/use-okf"}, {"source": "services/orders-api", "target": "services/auth-api"}, {"source": "services/orders-api", "target": "services/payments-api"}, {"source": "services/orders-api", "target": "datasets/orders-db"}, {"source": "services/orders-api", "target": "decisions/event-driven"}, {"source": "services/orders-api", "target": "metrics/checkout-conversion"}, {"source": "services/payments-api", "target": "services/orders-api"}, {"source": "services/payments-api", "target": "services/auth-api"}, {"source": "services/payments-api", "target": "datasets/orders-db"}, {"source": "services/payments-api", "target": "decisions/event-driven"}, {"source": "services/payments-api", "target": "runbooks/payment-failures"}];
-const PALETTE=["#6E56CF","#D97757","#22C55E","#3B82F6","#EAB308","#EC4899","#14B8A6","#F97316","#A855F7","#0EA5E9","#84CC16","#EF4444","#64748B"];
-const byId=Object.fromEntries(NODES.map(n=>[n.id,n]));
-const outL={}, inL={};
-NODES.forEach(n=>{outL[n.id]=[];inL[n.id]=[];});
-EDGES.forEach(e=>{outL[e.source].push(e.target);inL[e.target].push(e.source);});
-const types=[...new Set(NODES.map(n=>n.type))].sort();
-const color=Object.fromEntries(types.map((t,i)=>[t,PALETTE[i%PALETTE.length]]));
-const off=new Set();
-const cy=cytoscape({container:document.getElementById('cy'),minZoom:.2,maxZoom:1.6,wheelSensitivity:.2,
- elements:[...NODES.map(n=>({data:{...n,c:color[n.type]}})),...EDGES.map(e=>({data:e}))],
- style:[
-  {selector:'node',style:{'background-color':'data(c)','label':'data(title)','color':'#e6e8ee',
-   'font-size':10,'text-wrap':'wrap','text-max-width':120,'text-valign':'bottom','text-margin-y':4,
-   'text-outline-width':2,'text-outline-color':'#0e0f13','min-zoomed-font-size':6,
-   'width':'data(sz)','height':'data(sz)'}},
-  {selector:'edge',style:{'width':1.2,'line-color':'#3a4150','target-arrow-color':'#3a4150',
-   'target-arrow-shape':'triangle','arrow-scale':.8,'curve-style':'bezier','opacity':.7}},
-  {selector:'.dim',style:{'opacity':.10}},{selector:'.hl',style:{'border-width':3,'border-color':'#fff'}}
- ],
- layout:{name:'breadthfirst',animate:false,nodeRepulsion:9000,idealEdgeLength:90,padding:40}});
-const side=document.getElementById('side');
-const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function relList(title,arr){if(!arr.length)return'';
- return `<div class="rel"><h4>${title}</h4>${arr.map(id=>`<a data-go="${esc(id)}">${esc((byId[id]||{}).title||id)}</a>`).join('')}</div>`;}
-// §5.3 — the trust tier is derived, never stored: no `verified` is unverified,
-// `verified` by non-`human:` actors only is machine-confirmed, and any `human:`
-// actor makes it human-reviewed. The exact lowercase prefix is the whole key.
-// §5.5 — a concept is stale when today >= stale_after; both are YYYY-MM-DD, so
-// a string compare is the whole comparison. Advisory signals, not access control.
-const TODAY=new Date().toISOString().slice(0,10);
-function trustTier(n){const v=n.verified||[];
- if(!v.length)return['t-unverified','unverified'];
- return v.some(e=>(e.by||'').startsWith('human:'))?['t-human','human-reviewed']
-                                                  :['t-machine','machine-confirmed'];}
-function badges(n){const [cls,label]=trustTier(n),out=[`<span class="badge ${cls}">${label}</span>`];
- if(n.stale_after&&TODAY>=n.stale_after)out.push(`<span class="badge b-stale">stale since ${esc(n.stale_after)}</span>`);
- if(n.status==='deprecated')out.push('<span class="badge b-deprecated">deprecated</span>');
- return `<div class="badges">${out.join('')}</div>`;}
-// OKF v0.2 trust (§5.2) + lifecycle (§5.4/§5.5). A v0.1 `timestamp` arrives here
-// as generated.at with an empty `by`, so legacy bundles still show a date.
-function metaBlock(n){const g=n.generated||{},rows=[];
- if(n.status)rows.push(`<div>status <b>${esc(n.status)}</b></div>`);
- if(g.at||g.by)rows.push(`<div>generated${g.at?` <b>${esc(g.at)}</b>`:''}${g.by?` by ${esc(g.by)}`:''}</div>`);
- (n.verified||[]).forEach(v=>rows.push(`<div>verified${v.at?` <b>${esc(v.at)}</b>`:''}${v.by?` by ${esc(v.by)}`:''}</div>`));
- if(n.stale_after)rows.push(`<div>stale after <b>${esc(n.stale_after)}</b></div>`);
- return rows.length?`<div class="meta">${rows.join('')}</div>`:'';}
-// Provenance (§5.1). A source may be another concept (graph link), an external
-// URL, or a scope descriptor that is not followable at all.
-function srcList(n){const s=n.sources||[];if(!s.length)return'';
- return `<div class="rel"><h4>Sources</h4>${s.map(x=>{
-  const used=x.usage_count!=null?`used ${x.usage_count}×${x.usage_window?` (${x.usage_window})`:''}`:'';
-  const sig=[x.author,used,x.last_modified].filter(Boolean).join(' · ');
-  const label=esc(x.title||x.resource)+(sig?` <span class="sig">(${esc(sig)})</span>`:'');
-  if(x.cid&&byId[x.cid])return `<a data-go="${esc(x.cid)}">${label}</a>`;
-  if(/^https?:\/\//i.test(x.resource))return `<a href="${esc(x.resource)}" target="_blank" rel="noopener">${label}</a>`;
-  return `<span class="empty">${label}</span>`;}).join('')}</div>`;}
-// Resolve an in-body markdown link href to a concept id, mirroring build()'s
-// resolution: strip #anchor, require .md, absolute strips leading /, relative
-// resolves against the current concept's dir. Returns null if it's not a concept.
-function resolveHref(cid,href){let t=(href||'').split('#')[0];if(!t.endsWith('.md'))return null;
- let tgt;if(t[0]==='/'){tgt=t.replace(/^\/+/,'').slice(0,-3);}
- else{const base=cid.split('/').slice(0,-1);
-  for(const seg of t.slice(0,-3).split('/')){if(seg===''||seg==='.')continue;
-   if(seg==='..'){if(!base.length)return null;base.pop();}else base.push(seg);}
-  tgt=base.join('/');}
- return byId[tgt]?tgt:null;}
-function show(id){const n=byId[id];if(!n)return;const c=color[n.type];
- side.innerHTML=`<span class="type" style="background:${c}">${esc(n.type)}</span>
- <h2>${esc(n.title)}</h2><div class="desc">${esc(n.description)||'<span class=empty>no description</span>'}</div>
- <div class="tags">${(n.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
- ${badges(n)}${metaBlock(n)}${srcList(n)}${relList('Links to',outL[id])}${relList('Cited by',inL[id])}
- <div class="body">${n.body?DOMPurify.sanitize(marked.parse(n.body)):'<span class=empty>empty body</span>'}</div>`;
- side.querySelectorAll('[data-go]').forEach(a=>a.onclick=()=>select(a.getAttribute('data-go')));
- side.querySelectorAll('.body a[href]').forEach(a=>{const tgt=resolveHref(id,a.getAttribute('href'));
-  if(tgt)a.onclick=e=>{e.preventDefault();select(tgt);};});}
-function select(id){const ele=cy.getElementById(id);if(!ele.length)return;show(id);
- cy.elements().removeClass('hl').addClass('dim');const nb=ele.closedNeighborhood();nb.removeClass('dim');ele.addClass('hl');
- cy.animate({center:{eles:ele},duration:250});
- try{if(decodeURIComponent((location.hash||'').slice(1))!==id)location.hash=encodeURIComponent(id);}catch(e){}}
-cy.on('tap','node',e=>select(e.target.id()));
-cy.on('tap',e=>{if(e.target===cy)cy.elements().removeClass('dim hl');});
-function applyFilter(){const q=document.getElementById('search').value.toLowerCase();const ty=document.getElementById('type').value;
- cy.batch(()=>cy.nodes().forEach(n=>{const d=n.data();
-  const m=(!q||(d.title+' '+d.type+' '+d.description+' '+(d.tags||[]).join(' ')).toLowerCase().includes(q))
-        &&(!ty||d.type===ty)&&!off.has(d.type);
-  n.style('display',m?'element':'none');}));}
-let debounce;
-document.getElementById('search').oninput=()=>{clearTimeout(debounce);debounce=setTimeout(applyFilter,150);};
-document.getElementById('type').oninput=applyFilter;
-const tysel=document.getElementById('type');types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;tysel.appendChild(o);});
-let curLayout='breadthfirst';
-document.getElementById('layout').onchange=e=>{const v=e.target.value;
- if(v==='cose'&&NODES.length>1000&&!confirm(`force layout on ${NODES.length} concepts can freeze this tab — run anyway?`)){e.target.value=curLayout;return;}
- curLayout=v;cy.layout({name:v,animate:true,padding:40,nodeRepulsion:9000,idealEdgeLength:90}).run();};
-document.getElementById('legend').innerHTML=types.map(t=>`<span class="chip" data-t="${esc(t)}"><span class="dot" style="background:${color[t]}"></span>${esc(t)} (${NODES.filter(n=>n.type===t).length})</span>`).join('');
-document.querySelectorAll('#legend .chip').forEach(ch=>ch.onclick=()=>{const t=ch.getAttribute('data-t');
- if(off.has(t)){off.delete(t);ch.classList.remove('off');}else{off.add(t);ch.classList.add('off');}applyFilter();});
-document.getElementById('layout').value='breadthfirst';
-const Q=new URLSearchParams(location.search),QL=Q.get('layout'),QS=Q.get('select');
-if(QL&&[...document.querySelectorAll('#layout option')].some(o=>o.value===QL)){document.getElementById('layout').value=QL;curLayout=QL;cy.layout({name:QL,animate:false,padding:40,nodeRepulsion:9000,idealEdgeLength:90}).run();}
-function fromHash(){try{const h=decodeURIComponent((location.hash||'').slice(1));if(h&&byId[h])select(h);}catch(e){}}
-addEventListener('hashchange',fromHash);
-if(QS&&byId[QS])select(QS);else fromHash();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrickGraphAgent - OKF 지식 그래프 대시보드</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #sidebar {
+            width: 320px;
+            background-color: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-header {
+            padding: 20px;
+            background-color: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+        .sidebar-header h1 {
+            font-size: 1.2rem;
+            color: #38bdf8;
+        }
+        .sidebar-header p {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 10px 15px;
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+        .filter-btn {
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 2px solid transparent;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            background-color: #334155;
+            color: #cbd5e1;
+        }
+        .filter-btn.active {
+            border-color: #ffffff;
+            box-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+        .filter-btn.atomic { background-color: #38bdf8; color: #0f172a; }
+        .filter-btn.composite { background-color: #a855f7; color: #fff; }
+        .filter-btn.module { background-color: #22c55e; color: #0f172a; }
+        .filter-btn.meta { background-color: #eab308; color: #0f172a; }
+        .filter-btn.other { background-color: #64748b; color: #fff; }
+        .filter-btn.all { background-color: #475569; color: #fff; }
+        .filter-btn:hover { opacity: 0.8; transform: scale(1.05); }
+        .node-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .node-item {
+            padding: 10px 14px;
+            margin-bottom: 6px;
+            background-color: #334155;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+        }
+        .node-item:hover {
+            background-color: #475569;
+            transform: translateX(4px);
+        }
+        .node-item.active {
+            background-color: #0284c7;
+            color: #fff;
+        }
+        .badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-atomic { background-color: #38bdf8; color: #0f172a; }
+        .badge-composite { background-color: #a855f7; color: #fff; }
+        .badge-module { background-color: #22c55e; color: #0f172a; }
+        .badge-meta { background-color: #eab308; color: #0f172a; }
+        .badge-other { background-color: #64748b; color: #fff; }
+        #main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #graph-view {
+            height: 45%;          /* 초기 비율 */
+            background-color: #0f172a;
+            border-bottom: 1px solid #334155;
+            overflow: hidden;
+            min-height: 50px;     /* 너무 작아지지 않도록 */
+            flex-shrink: 0;
+        }
+        /* 분할 바 (드래그 핸들) */
+        #resizer {
+            height: 6px;
+            background-color: #334155;
+            cursor: row-resize;
+            flex-shrink: 0;
+            transition: background-color 0.2s;
+        }
+        #resizer:hover {
+            background-color: #38bdf8;
+        }
+        #content-view {
+            flex: 1;              /* 남은 공간 모두 차지 */
+            background-color: #1e293b;
+            padding: 30px;
+            overflow-y: auto;
+            min-height: 100px;
+        }
+        .markdown-body {
+            max-width: 900px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+        .markdown-body h1 { color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+        .markdown-body h2 { color: #818cf8; margin-top: 24px; }
+        .markdown-body p { color: #cbd5e1; margin-bottom: 14px; }
+        .markdown-body code {
+            background-color: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f43f5e;
+        }
+        .markdown-body pre {
+            background-color: #0f172a;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            overflow-x: auto;
+        }
+        .markdown-body blockquote {
+            border-left: 4px solid #38bdf8;
+            padding-left: 16px;
+            color: #94a3b8;
+        }
+        .markdown-body a { color: #38bdf8; text-decoration: none; }
+        .markdown-body a:hover { text-decoration: underline; }
+        .meta-tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .meta-tag {
+            background-color: #334155;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1>🧱 BrickGraphAgent</h1>
+            <p>OKF 지식 그래프 & 문서 브라우저</p>
+        </div>
+        <div class="filter-bar" id="filter-bar">
+            <button class="filter-btn all active" data-group="all">전체</button>
+            <button class="filter-btn atomic active" data-group="atomic">ATOMIC</button>
+            <button class="filter-btn composite active" data-group="composite">COMPOSITE</button>
+            <button class="filter-btn module active" data-group="module">MODULE</button>
+            <button class="filter-btn meta active" data-group="meta">META</button>
+            <button class="filter-btn other active" data-group="other">OTHER</button>
+        </div>
+        <div class="node-list" id="node-list"></div>
+    </div>
+    <div id="main-container">
+        <div id="graph-view"></div>
+        <div id="resizer"></div>   <!-- 드래그 핸들 -->
+        <div id="content-view">
+            <div id="markdown-container" class="markdown-body">
+                <h1>노드를 선택해 주세요</h1>
+                <p>좌측 목록 또는 그래프에서 노드를 클릭하면 내용이 표시됩니다.</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        const allNodes = [
+  {
+    "id": "index.nano_vllm",
+    "title": "nano-vLLM OKF 지식 베이스 메인 인덱스",
+    "type": "Index",
+    "path": "index.md",
+    "group": "other",
+    "body": "# nano-vLLM OKF 지식 베이스 (Knowledge Base)\n\n> **nano-vLLM**: vLLM의 고성능 서빙 아키텍처(PagedAttention, Continuous Batching, Memory Pool, Prefix Caching, Distributed Serving)를 바닥부터(Build-from-Scratch) 구현하며 학습하기 위한 계층적 OKF 지식 체계입니다.\n\n---\n\n## 📌 지식 구조 체계 (Knowledge Structure)\n\n1. **[00_meta](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/00_meta)**: 전체 학습 경로(`learning_path.md`) 및 주요 용어 사전(`glossary.md`)\n2. **[01_atomic_concepts](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts)**: 더 이상 분해되지 않는 기본 개념 단위 (Prefill/Decode, KV Cache, Attention, Block Allocator 등)\n3. **[02_composite_concepts](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts)**: 원자적 개념들이 `COMPOSED_OF` 관계로 결합된 하위/상위 복합 시스템 (Block Manager, Dynamic Batcher, Serving Engine 등)\n4. **[03_modules](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/03_modules)**: Module 00부터 Module 07까지의 실습 및 아키텍처 모듈 명세\n\n---\n\n## 🗺️ nano-vLLM 7개 모듈 맵 (7-Module Map)\n\n| 모듈 | 제목 | 핵심 개념 (Atomic / Composite) | 상태 |\n|---|---|---|---|\n| **Module 00** | Foundational Concepts | `inference_only`, `prefill_phase`, `decode_phase` | 🟢 완료 |\n| **Module 01** | Autoregressive Generation | `kv_cache`, `attention`, `ffn`, `sampling` | 🟢 완료 |\n| **Module 02** | Basic KV Cache Engine | `static_kv_cache`, `seq_len_budget` | 🟢 완료 |\n| **Module 03** | Continuous Batching | `continuous_batching`, `iteration_level_scheduling` | ⚪ 대기 |\n| **Module 04** | PagedAttention Architecture | `paged_kv_cache`, `block_size_alignment` | ⚪ 대기 |\n| **Module 05** | Memory Management & Allocation | `memory_pool`, `block_allocator`, `swap_manager` | ⚪ 대기 |\n| **Module 06** | Advanced Prefix Caching | `prefix_cache`, `radix_tree`, `cache_hit_detection` | ⚪ 대기 |\n| **Module 07** | Multi-GPU & Distributed Serving | `distributed_kv`, `load_balancer`, `tensor_parallel` | ⚪ 대기 |\n\n---\n\n## 🔗 주요 퀵 링크\n\n- [학습 경로 가이드 (learning_path.md)](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/00_meta/learning_path.md)\n- [용어 사전 (glossary.md)](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/00_meta/glossary.md)\n- [변경 이력 (log.md)](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/log.md)",
+    "frontmatter": {
+      "type": "Index",
+      "id": "index.nano_vllm",
+      "title": "nano-vLLM OKF 지식 베이스 메인 인덱스",
+      "description": "nano-vLLM 7개 모듈 및 계층적 개념 체계(Atomic/Composite)를 관리하는 메인 인덱스 문서",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:06:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:06:00+00:00"
+        }
+      ]
+    },
+    "links": [
+      [
+        "00_meta",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/00_meta"
+      ],
+      [
+        "01_atomic_concepts",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts"
+      ],
+      [
+        "02_composite_concepts",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts"
+      ],
+      [
+        "03_modules",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/03_modules"
+      ],
+      [
+        "학습 경로 가이드 (learning_path.md)",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/00_meta/learning_path.md"
+      ],
+      [
+        "용어 사전 (glossary.md)",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/00_meta/glossary.md"
+      ],
+      [
+        "변경 이력 (log.md)",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/log.md"
+      ]
+    ]
+  },
+  {
+    "id": "log",
+    "title": "log",
+    "type": "Document",
+    "path": "log.md",
+    "group": "other",
+    "body": "# nano-vLLM OKF 지식 베이스 변경 이력 (Log)\n\nAll notable changes to the `.okf/00_nano_vllm` Knowledge Base will be documented in this file.\nThe format is based on ISO date ordering (newest first).\n\n---\n\n## [2026-08-05] - OKF v0.2 구조 초기화\n\n### Added\n- `.okf/00_nano_vllm/index.md`: 메인 인덱스 및 7개 모듈 맵 정의\n- `.okf/00_nano_vllm/log.md`: KB 변경 기록 일지 생성\n",
+    "frontmatter": {},
+    "links": []
+  },
+  {
+    "id": "nano-vllm-from-scratch",
+    "title": "nano-vllm-from-scratch",
+    "type": "Document",
+    "path": "nano-vllm-from-scratch.md",
+    "group": "other",
+    "body": "# nano‑vLLM Build‑from‑Scratch의 OKF 기반 Brick‑by‑Brick 학습 체계 재구성 가이드\n\n> *\"We build 'nano‑vLLM' through 14 structured labs, each focusing on one core concept with clear, modular visualizations. This guide adopts a brick‑by‑brick approach, showing exactly how each component fits into the growing system.\"*\n\n---\n\n## 1. 서론: 왜 OKF + Brick‑by‑Brick인가?\n\nnano‑vLLM 학습 자료는 **14개 랩(Lab)** 으로 구성된 방대한 내용을 담고 있습니다. 이 자료를 효과적으로 학습하려면 **단순한 순차적 읽기가 아닌, 개념의 계층적 이해와 점진적 조립**이 필요합니다.\n\n**OKF(Open Knowledge Format) + Brick‑by‑Brick 접근법**이 제공하는 이점:\n\n| 기존 학습 방식 | OKF + Brick‑by‑Brick 방식 |\n|---|---|\n| 14개 랩을 선형적으로 읽음 | 원자적 개념 → 복합 개념 → 전체 시스템으로 **계층적 조립** |\n| 개념 간 관계가 암묵적 | `PREREQUISITE_OF`, `COMPOSED_OF`, `BUILDS_UPON`으로 **명시적 관계화** |\n| 학습 진척도 추적 어려움 | 각 개념의 `status`(draft/learned/mastered)로 **진척도 관리** |\n| 복습 시 재탐색 필요 | 그래프 기반 **시각적 내비게이션**으로 원하는 개념 즉시 이동 |\n| 에이전트 활용 제한 | OKF KB를 에이전트가 직접 읽고 **자가 진단 및 추론** |\n\n---\n\n## 2. nano‑vLLM 개념의 계층적 분해 (Brick Taxonomy)\n\n### 2.1 원자적 개념 (Atomic Concepts) — 더 이상 분해할 수 없는 기본 단위\n\n| ID | 개념 | 설명 | 선행 조건 |\n|---|---|---|---|\n| `atomic.inference_only` | Inference‑Only Graph | 훈련 그래프와 달리 역전파, 옵티마이저, 그래디언트가 없는 순전파 전용 그래프 | 없음 |\n| `atomic.prefill_phase` | Prefill Phase | 전체 프롬프트를 한 번에 처리하는 Compute‑Bound 단계 | `atomic.inference_only` |\n| `atomic.decode_phase` | Decode Phase | 토큰을 하나씩 생성하는 Memory‑Bound 단계 | `atomic.inference_only` |\n| `atomic.kv_cache` | KV Cache | 각 토큰의 Key/Value를 저장하는 동적 상태 | `atomic.inference_only` |\n| `atomic.attention` | Masked Self‑Attention | Query‑Key‑Value 연산 + Causal Masking | `atomic.kv_cache` |\n| `atomic.ffn` | Feed‑Forward Network | 각 토큰에 독립적으로 적용되는 2층 MLP | `atomic.attention` |\n| `atomic.sampling` | Sampling Strategy | 로짓→토큰 ID 변환 (온도, top‑k, top‑p 등) | `atomic.decode_phase` |\n| `atomic.continuous_batching` | Continuous Batching | 여러 요청을 동시에 처리하는 일괄 처리 | `atomic.prefill_phase`, `atomic.decode_phase` |\n| `atomic.paged_kv_cache` | Paged KV Cache | 고정 크기 블록 단위의 KV 캐시 관리 | `atomic.kv_cache` |\n| `atomic.hybrid_scheduling` | Hybrid Scheduling | 우선순위 기반 지능형 스케줄링 | `atomic.continuous_batching` |\n\n### 2.2 복합 개념 (Composite Concepts) — 원자적 개념들의 조합\n\n| ID | 구성 요소 | 설명 |\n|---|---|---|\n| `composite.inference_model` | `atomic.inference_only` + `atomic.kv_cache` | 추론 전용 모델의 전체 메모리 모델 (가중치 40%, KV Cache 55%, Activation 5%) |\n| `composite.autoregressive_loop` | `atomic.prefill_phase` + `atomic.decode_phase` + `atomic.sampling` | 프리필→디코드 반복의 자가회귀 생성 루프 |\n| `composite.decoder_layer` | `atomic.attention` + `atomic.ffn` + 잔차 연결 | 단일 Transformer 디코더 계층 전체 |\n| `composite.serving_system` | `atomic.continuous_batching` + `atomic.paged_kv_cache` + `atomic.hybrid_scheduling` | vLLM의 전체 서빙 시스템 아키텍처 |\n\n### 2.3 개념 간 관계 그래프\n\n```\n[atomic.inference_only]\n    ├── PREREQUISITE_OF → [atomic.prefill_phase]\n    ├── PREREQUISITE_OF → [atomic.decode_phase]\n    └── PREREQUISITE_OF → [atomic.kv_cache]\n\n[atomic.prefill_phase] ──┐\n                          ├── COMPOSED_OF → [composite.autoregressive_loop]\n[atomic.decode_phase] ───┤\n                          │\n[atomic.sampling] ────────┘\n\n[atomic.kv_cache]\n    ├── PREREQUISITE_OF → [atomic.paged_kv_cache]\n    └── PREREQUISITE_OF → [atomic.attention]\n\n[atomic.attention] ──┐\n                      ├── COMPOSED_OF → [composite.decoder_layer]\n[atomic.ffn] ────────┘\n\n[atomic.continuous_batching] ──┐\n                                ├── COMPOSED_OF → [composite.serving_system]\n[atomic.paged_kv_cache] ────────┤\n                                │\n[atomic.hybrid_scheduling] ────┘\n```\n\n---\n\n## 3. OKF KB 디렉토리 구조\n\n```\n.okf/\n├── index.md                          # 전체 KB 인덱스 및 내비게이션\n├── log.md                            # 변경 이력 (ISO 날짜, 최신순)\n│\n├── 00_meta/                          # 메타 정보\n│   ├── learning_path.md              # 전체 학습 경로 (Module 0→14 순서)\n│   └── glossary.md                   # 용어 사전\n│\n├── 01_atomic_concepts/               # 원자적 개념 (Atomic Concepts)\n│   ├── inference_only.md             # atomic.inference_only\n│   ├── prefill_phase.md              # atomic.prefill_phase\n│   ├── decode_phase.md               # atomic.decode_phase\n│   ├── kv_cache.md                   # atomic.kv_cache\n│   ├── attention.md                  # atomic.attention\n│   ├── ffn.md                        # atomic.ffn\n│   ├── sampling.md                   # atomic.sampling\n│   ├── continuous_batching.md        # atomic.continuous_batching\n│   ├── paged_kv_cache.md             # atomic.paged_kv_cache\n│   └── hybrid_scheduling.md          # atomic.hybrid_scheduling\n│\n├── 02_composite_concepts/            # 복합 개념 (Composite Concepts)\n│   ├── inference_model.md            # composite.inference_model\n│   ├── autoregressive_loop.md        # composite.autoregressive_loop\n│   ├── decoder_layer.md              # composite.decoder_layer\n│   └── serving_system.md             # composite.serving_system\n│\n├── 03_labs/                          # 원본 랩 구조와의 매핑\n│   ├── module_00_foundational.md     # Module 0: Lab 0.1~0.2\n│   ├── module_01_autoregressive.md   # Module 1: Lab 1.1~1.3\n│   ├── module_02_kv_cache.md         # Module 2: Lab 2.1~2.x\n│   ├── module_03_batching.md         # Module 3: Lab 3.1~3.x\n│   └── ... (Module 4~13)\n│\n├── 04_diagrams/                      # 다이어그램 (OKF에서 참조)\n│   ├── training_vs_inference.md      # 훈련 vs 추론 그래프 비교\n│   ├── prefill_decode_timeline.md    # 프리필/디코드 타임라인\n│   └── decoder_layer_flow.md         # 디코더 계층 데이터 흐름\n│\n└── 05_exercises/                     # 학습 확인용 실습 과제\n    ├── checkpoint_01.md              # Module 0 완료 확인\n    ├── checkpoint_02.md              # Module 1 완료 확인\n    └── ...\n```\n\n---\n\n## 4. OKF 파일 작성 템플릿\n\n### 4.1 원자적 개념 템플릿 (`01_atomic_concepts/kv_cache.md`)\n\n```markdown\n---\ntype: AtomicConcept\nid: atomic.kv_cache\ntitle: KV Cache\ndescription: 각 토큰의 Key와 Value 텐서를 저장하는 동적 캐시로, 디코드 단계에서 재계산 없이 이전 토큰의 정보를 재사용하게 함\nstatus: draft\nlearning_path:\n  order: 3\n  estimated_time: 20min\ngenerated:\n  by: process:curator\n  at: 2026-08-05T10:00:00Z\nverified:\n  - by: human:expert\n    at: 2026-08-06T09:00:00Z\nprerequisites:\n  - atomic.inference_only\ncomposes_into:\n  - composite.inference_model\n  - composite.autoregressive_loop\n  - composite.decoder_layer\nsources:\n  - id: original_lab\n    resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ#Lab-0.1\n    title: \"nano-vLLM Lab 0.1: The Inference-Only Graph\"\ndiagrams:\n  - ref: 04_diagrams/memory_breakdown.md\n    caption: \"Inference Memory Usage After 100 Decode Steps\"\n---\n\n# KV Cache (Key-Value Cache)\n\n## 핵심 개념\n\nLLM 추론에서 KV Cache는 **동적 상태의 핵심**이다. \n\n- **역할**: 각 디코드 단계에서 이전 토큰들의 K, V 텐서를 저장하여 재계산을 방지\n- **특징**: \n  - 추가 전용(Append-Only) 성장\n  - 읽기 집약적(Read-Intensive)\n  - 메모리 대역폭이 병목\n\n## 메모리 영향\n\n| 단계 | KV Cache 비중 |\n|---|---|\n| Prefill 시작 시 | 5% |\n| 100 Decode 단계 후 | 55% |\n\n## 관련 개념\n\n- **선행 조건**: [[atomic.inference_only]]\n- **상위 개념**: [[composite.inference_model]], [[composite.autoregressive_loop]]\n- **파생 개념**: [[atomic.paged_kv_cache]]\n\n## 확인 문제\n\n1. KV Cache가 없는 경우 디코드 단계에서 어떤 일이 발생하는가?\n2. KV Cache의 메모리 사용량이 시간에 따라 어떻게 변화하는가?\n```\n\n### 4.2 복합 개념 템플릿 (`02_composite_concepts/autoregressive_loop.md`)\n\n```markdown\n---\ntype: CompositeConcept\nid: composite.autoregressive_loop\ntitle: Autoregressive Decoding Loop\ndescription: Prefill 단계와 Decode 단계를 반복하며 토큰을 순차적으로 생성하는 전체 추론 루프\nstatus: draft\ncomponents:\n  - atomic.prefill_phase\n  - atomic.decode_phase\n  - atomic.sampling\nprerequisites:\n  - atomic.inference_only\n  - atomic.kv_cache\ngenerated:\n  by: process:curator\n  at: 2026-08-05T10:00:00Z\n---\n\n# Autoregressive Decoding Loop\n\n## 전체 구조\n\n```\n[Prompt 입력]\n     │\n     ▼\n┌─────────────────────────────────┐\n│  Prefill Phase (1회)            │  ← Compute-Bound\n│  - 전체 프롬프트 순전파         │\n│  - KV Cache 초기 채움           │\n└─────────────────────────────────┘\n     │\n     ▼\n┌─────────────────────────────────┐\n│  Decode Phase (반복)            │  ← Memory-Bound\n│  - 새 토큰 1개 생성             │\n│  - KV Cache에 추가              │\n└─────────────────────────────────┘\n     │\n     ▼\n  [종료 조건: EOS 또는 최대 길이]\n```\n\n## 구성 요소\n\n| 단계 | 구성 개념 | 비고 |\n|---|---|---|\n| Prefill | [[atomic.prefill_phase]] | Compute-Bound, 1회 실행 |\n| Decode | [[atomic.decode_phase]] | Memory-Bound, 반복 실행 |\n| 토큰 선택 | [[atomic.sampling]] | 매 디코드 단계마다 실행 |\n\n## 학습 경로\n\n1. [[atomic.inference_only]] 이해\n2. [[atomic.kv_cache]] 이해\n3. [[atomic.prefill_phase]] + [[atomic.decode_phase]] 이해\n4. 본 개념 (composite.autoregressive_loop) 학습\n5. [[atomic.sampling]] 학습으로 확장\n```\n\n---\n\n## 5. Brick‑by‑Brick 학습 경로 설계\n\n### 5.1 전체 로드맵 (14개 랩 → 4개 단계)\n\n| 단계 | 학습 목표 | 포함 개념 | 원본 Module |\n|---|---|---|---|\n| **Foundation** | 추론의 기본 모델 이해 | `inference_only`, `prefill_phase`, `decode_phase` | Module 0 |\n| **Engine** | 자가회귀 생성 엔진 이해 | `attention`, `ffn`, `autoregressive_loop`, `sampling` | Module 1 |\n| **Memory** | KV Cache와 메모리 관리 이해 | `kv_cache`, `paged_kv_cache`, `inference_model` | Module 2 |\n| **Systems** | 대규모 서빙 아키텍처 이해 | `continuous_batching`, `hybrid_scheduling`, `serving_system` | Module 3~13 |\n\n### 5.2 학습 진척도 추적을 위한 OKF 메타데이터\n\n각 개념 파일의 `status` 필드를 학습 단계에 따라 업데이트:\n\n```yaml\nstatus: draft      # 아직 학습하지 않음\nstatus: learning   # 학습 중\nstatus: learned    # 개념 이해 완료\nstatus: mastered   # 심화 이해 및 응용 가능\n```\n\n### 5.3 에이전트 기반 학습 도우미\n\nBuilder 에이전트가 학습자의 진척도를 추적하고 다음 단계를 제안:\n\n```python\n# src/agents/learning_guide.py\n@llm_behavior(pattern=\"\"\"\n    MATCH (c:Concept)\n    WHERE c.status = 'learned'\n      AND exists((c)-[:PREREQUISITE_OF]->(n:Concept))\n      AND n.status = 'draft'\n    RETURN c, n\n\"\"\")\ndef suggest_next_concept(graph, learned_prereqs):\n    \"\"\"\n    학습자가 'learned' 상태로 마킹한 개념을 기반으로,\n    선행 조건이 모두 충족된 다음 개념을 추천.\n    \"\"\"\n    for prereq, next_concept in learned_prereqs:\n        # 모든 선행 조건이 충족되었는지 확인\n        all_prereqs = graph.query(\"\"\"\n            MATCH (p:Concept)-[:PREREQUISITE_OF]->(n)\n            WHERE n.id = $next_id\n            RETURN p.status\n        \"\"\", next_id=next_concept.id)\n        \n        if all(p.status == 'learned' for p in all_prereqs):\n            yield {\n                'concept': next_concept.id,\n                'title': next_concept.title,\n                'reason': f\"All prerequisites for {next_concept.id} are satisfied\"\n            }\n```\n\n---\n\n## 6. 시각화: OKF KB + ActiveGraph 기반 학습 대시보드\n\n### 6.1 지식 그래프 시각화 (`dist/learning_dashboard.html`)\n\n```html\n<!-- ActiveGraph + Cytoscape.js 기반 실시간 학습 대시보드 -->\n<!DOCTYPE html>\n<html>\n<head>\n    <title>nano-vLLM Learning Dashboard</title>\n    <script src=\"https://unpkg.com/cytoscape/dist/cytoscape.min.js\"><\/script>\n</head>\n<body>\n    <div id=\"cy\" style=\"width:100%;height:800px;\"></div>\n    <script>\n        // OKF KB에서 로드한 개념 그래프 렌더링\n        // - 초록색: mastered, 파란색: learned, 회색: draft\n        // - 실선: COMPOSED_OF, 점선: PREREQUISITE_OF\n        // - 클릭 시 해당 개념의 OKF 파일로 이동\n    <\/script>\n</body>\n</html>\n```\n\n### 6.2 학습 경로 시각화 (Mermaid)\n\n```mermaid\ngraph TD\n    subgraph Foundation[\"Foundation (Module 0)\"]\n        A[inference_only] --> B[prefill_phase]\n        A --> C[decode_phase]\n        A --> D[kv_cache]\n    end\n    \n    subgraph Engine[\"Engine (Module 1)\"]\n        B --> E[autoregressive_loop]\n        C --> E\n        D --> F[attention]\n        D --> G[ffn]\n        F --> H[decoder_layer]\n        G --> H\n        H --> E\n        E --> I[sampling]\n    end\n    \n    subgraph Memory[\"Memory (Module 2)\"]\n        D --> J[paged_kv_cache]\n        J --> K[inference_model]\n    end\n    \n    subgraph Systems[\"Systems (Module 3+)\"]\n        B --> L[continuous_batching]\n        C --> L\n        L --> M[hybrid_scheduling]\n        J --> M\n        M --> N[serving_system]\n    end\n    \n    style A fill:#4CAF50,color:#fff\n    style B fill:#2196F3,color:#fff\n    style C fill:#2196F3,color:#fff\n    style D fill:#2196F3,color:#fff\n```\n\n---\n\n## 7. 구현 로드맵\n\n### Phase 1: OKF KB 초기화 (1일)\n- [ ] `.okf/` 디렉토리 생성 및 `index.md`, `log.md` 작성\n- [ ] nano‑vLLM의 14개 랩에서 원자적 개념 10개 추출 및 OKF 파일 작성\n- [ ] 복합 개념 4개 작성 및 관계 정의 (`PREREQUISITE_OF`, `COMPOSED_OF`)\n\n### Phase 2: 학습 경로 설계 (1일)\n- [ ] `learning_path.md`에 전체 학습 순서 정의\n- [ ] 각 개념에 `status`, `estimated_time`, `prerequisites` 필드 추가\n- [ ] Module 0~13과 개념 간 매핑 테이블 작성\n\n### Phase 3: 에이전트 연동 (2일)\n- [ ] Brick 01 (Injest): OKF KB 변경 감지\n- [ ] Brick 02 (Compile): 개념 간 관계 그래프 컴파일\n- [ ] Brick 03 (Ask): 학습자 질문에 컨텍스트 제공\n- [ ] Learning Guide Agent: 다음 학습 개념 추천\n\n### Phase 4: 시각화 및 검증 (1일)\n- [ ] `okf_visualize.py`로 지식 그래프 HTML 생성\n- [ ] `okf_validator.py`로 OKF v0.2 규격 검증\n- [ ] CI 연동 (GitHub Actions)\n\n---\n\n## 8. OKF v0.2 준수 체크리스트\n\n- [ ] 모든 `.md` 파일에 YAML frontmatter 존재\n- [ ] 모든 파일에 `type` 필드 (AtomicConcept / CompositeConcept / ...)\n- [ ] `index.md`에 `okf_version: v0.2` 명시\n- [ ] `log.md`에 ISO 날짜 기반 변경 이력\n- [ ] `sources` 필드로 원본 자료 연결 (HackMD URL)\n- [ ] `generated` 필드로 생성 주체 및 시간 기록\n- [ ] `prerequisites` 및 `composes_into`로 관계 명시\n- [ ] `status` 필드로 학습 진척도 관리\n\n---\n\n## 9. 기대 효과\n\n1. **개념의 계층적 이해**: 원자적 개념부터 시작하여 점진적으로 복합 개념으로 확장\n2. **학습 경로의 명시화**: 어떤 개념을 먼저 배워야 하는지 그래프로 시각화\n3. **자가 진단 가능**: 학습자가 자신의 진척도를 OKF 상태 필드로 추적\n4. **에이전트 지원**: Builder 에이전트가 다음 학습 단계를 자동 추천\n5. **재사용성**: OKF KB는 다른 LLM 시스템 학습에도 확장 가능\n\n> *\"This guide adopts a brick‑by‑brick approach, showing exactly how each component fits into the growing system.\"*\n\nOKF + Brick‑by‑Brick은 이 원칙을 **실행 가능한 지식 구조**로 구현합니다. nano‑vLLM의 14개 랩이 단순한 문서 묶음이 아닌, **에이전트가 읽고 추론하며 학습자를 안내하는 살아있는 지식 그래프**로 재탄생합니다.",
+    "frontmatter": {},
+    "links": []
+  },
+  {
+    "id": "nano-vllm-plan",
+    "title": "nano-vllm-plan",
+    "type": "Document",
+    "path": "nano-vllm-plan.md",
+    "group": "other",
+    "body": "# BrickGraphAgent: nano‑vLLM 학습 가이드 에이전트 개발 계획 (수정안)\n\n> *\"From 14 labs to a living knowledge graph: OKF-based brick-by-brick learning with ActiveGraph-powered self-improving guide agent\"*\n\n---\n\n## 📌 개요: 전환의 핵심\n\n원래 개발 계획(`plan.md`)은 **보고서/제안서 논리 검증 및 지식 구축**을 목표로 했습니다. 이번 수정안에서는 **nano‑vLLM의 5~7개 모듈**을 OKF KB로 구축하고, 학습자가 **brick‑by‑brick**으로 개념을 마스터할 수 있도록 안내하는 **Learning Guide Agent**로 초점을 전환합니다.\n\n**변경된 목표**:\n\n| 항목 | 원래 계획 | 수정된 계획 (nano‑vLLM 학습 가이드) |\n|---|---|---|\n| **KB 대상** | 보고서/제안서 도메인 | nano‑vLLM 14개 모듈 (우선 5~7개 모듈) |\n| **에이전트 역할** | 논리 모순 탐지 + 구조 개선 | **학습 경로 추적 + 개념 추천 + 이해도 평가** |\n| **주요 출력** | 수정 제안 보고서 | **맞춤형 학습 경로 + 진척도 대시보드** |\n| **성공 지표** | 논리 일관성 +12% | **학습 시간 단축 25% + 개념 정확도 향상** |\n\n**이유**: nano‑vLLM의 구조적 복잡성은 OKF의 **계층적 개념 표현**과 **brick‑by‑brick** 접근법에 최적화되어 있습니다. 또한 ActiveGraph의 이벤트 소싱은 **학습자의 진척도 추적**과 **에이전트의 자가 개선**을 완벽하게 지원합니다.\n\n---\n\n## 🔄 nano‑vLLM Module 5~7 요약 (OKF 관점에서 재구성)\n\n> **참고**: Module 3 (Continuous Batching)과 Module 4 (PagedAttention)는 **선행 조건(prerequisites)** 으로 포함됩니다. Module 5~7은 이 기반 위에 구축된 **고급 시스템 통합 및 최적화** 주제입니다.\n\n### Module 5: Memory Management & Block Manager\n\n| 개념 ID | 설명 | 선행 조건 |\n|---|---|---|\n| `atomic.memory_pool` | GPU 메모리 풀 추상화 | `atomic.paged_kv_cache` |\n| `atomic.block_allocator` | 블록 할당/해제 전략 (First‑Fit, Best‑Fit) | `atomic.memory_pool` |\n| `atomic.swap_manager` | CPU‑GPU 스와핑 정책 | `atomic.block_allocator` |\n| `composite.block_manager` | PagedAttention 블록 관리자 전체 | `atomic.paged_kv_cache` + `atomic.block_allocator` |\n\n### Module 6: Prefix Caching & Reuse\n\n| 개념 ID | 설명 | 선행 조건 |\n|---|---|---|\n| `atomic.prefix_cache` | 공통 프롬프트 접두사 KV Cache 재사용 | `atomic.paged_kv_cache` |\n| `atomic.cache_hit_detection` | 캐시 히트 탐지 알고리즘 | `atomic.prefix_cache` |\n| `composite.caching_strategy` | 전체 캐싱 정책 (LRU, LFU 등) | `atomic.prefix_cache` + `atomic.swap_manager` |\n\n### Module 7: Distributed Serving & Load Balancing\n\n| 개념 ID | 설명 | 선행 조건 |\n|---|---|---|\n| `atomic.distributed_kv` | 분산 환경에서의 KV Cache 공유 | `composite.block_manager` |\n| `atomic.load_balancer` | 요청 분산 및 노드 선택 전략 | `atomic.continuous_batching` |\n| `atomic.fault_tolerance` | 장애 복구 및 체크포인팅 | `atomic.distributed_kv` |\n| `composite.distributed_serving` | 전체 분산 서빙 시스템 | `composite.serving_system` + `atomic.distributed_kv` |\n\n---\n\n## 🏗️ 수정된 디렉토리 구조\n\n```\nbrick-graph-agent/\n├── .okf/                                    # 📂 OKF v0.2 Knowledge Base\n│   ├── index.md                             # KB 메인 인덱스 (nano‑vLLM 맵)\n│   ├── log.md                               # 변경 이력\n│   │\n│   ├── 00_meta/\n│   │   ├── learning_path.md                 # 전체 학습 경로 (Module 0→13)\n│   │   └── glossary.md                      # 용어 사전\n│   │\n│   ├── 01_atomic_concepts/                  # 원자적 개념\n│   │   ├── inference_only.md                # Module 0\n│   │   ├── prefill_phase.md                 # Module 0\n│   │   ├── decode_phase.md                  # Module 0\n│   │   ├── kv_cache.md                      # Module 1\n│   │   ├── attention.md                     # Module 1\n│   │   ├── ffn.md                           # Module 1\n│   │   ├── sampling.md                      # Module 1\n│   │   ├── continuous_batching.md           # Module 3\n│   │   ├── paged_kv_cache.md                # Module 4\n│   │   ├── hybrid_scheduling.md             # Module 3\n│   │   ├── memory_pool.md                   # Module 5 ⭐ NEW\n│   │   ├── block_allocator.md               # Module 5 ⭐ NEW\n│   │   ├── swap_manager.md                  # Module 5 ⭐ NEW\n│   │   ├── prefix_cache.md                  # Module 6 ⭐ NEW\n│   │   ├── cache_hit_detection.md           # Module 6 ⭐ NEW\n│   │   ├── distributed_kv.md                # Module 7 ⭐ NEW\n│   │   ├── load_balancer.md                 # Module 7 ⭐ NEW\n│   │   └── fault_tolerance.md               # Module 7 ⭐ NEW\n│   │\n│   ├── 02_composite_concepts/               # 복합 개념\n│   │   ├── inference_model.md               # Module 0/2\n│   │   ├── autoregressive_loop.md           # Module 1\n│   │   ├── decoder_layer.md                 # Module 1\n│   │   ├── serving_system.md                # Module 3/4\n│   │   ├── block_manager.md                 # Module 5 ⭐ NEW\n│   │   ├── caching_strategy.md              # Module 6 ⭐ NEW\n│   │   └── distributed_serving.md           # Module 7 ⭐ NEW\n│   │\n│   ├── 03_modules/                          # Module별 매핑\n│   │   ├── module_00_foundational.md\n│   │   ├── module_01_autoregressive.md\n│   │   ├── module_02_kv_cache.md\n│   │   ├── module_03_batching.md\n│   │   ├── module_04_paged_attention.md\n│   │   ├── module_05_memory_management.md   # ⭐ NEW\n│   │   ├── module_06_prefix_caching.md      # ⭐ NEW\n│   │   └── module_07_distributed_serving.md # ⭐ NEW\n│   │\n│   ├── 04_diagrams/                         # 다이어그램 참조\n│   │   ├── prefill_decode_timeline.md\n│   │   ├── decoder_layer_flow.md\n│   │   └── memory_hierarchy.md              # ⭐ NEW\n│   │\n│   └── 05_learning_checkpoints/             # 학습 확인용 체크포인트\n│       ├── checkpoint_03_batching.md\n│       ├── checkpoint_04_paged_attention.md\n│       ├── checkpoint_05_memory.md          # ⭐ NEW\n│       ├── checkpoint_06_caching.md         # ⭐ NEW\n│       └── checkpoint_07_distributed.md     # ⭐ NEW\n│\n├── src/                                     # 📂 파이썬 소스코드\n│   ├── main.py                              # 에이전트 실행 진입점\n│   │\n│   ├── active_graph/                        # 🤖 ActiveGraph 레이어\n│   │   ├── event_store.py\n│   │   ├── topics.py\n│   │   └── cache.py\n│   │\n│   ├── agent_core/                          # 🧱 코어 브릭\n│   │   ├── injestor.py                      # Brick 01\n│   │   ├── compiler.py                      # Brick 02\n│   │   ├── questioner.py                    # Brick 03\n│   │   └── browser.py                       # Brick 04\n│   │\n│   ├── agents/                              # 🧠 학습 가이드 에이전트\n│   │   ├── base_agent.py\n│   │   ├── learning_guide.py                # ⭐ 학습 경로 추천\n│   │   ├── progress_tracker.py              # ⭐ 진척도 관리\n│   │   ├── concept_explainer.py             # ⭐ 개념 설명 생성\n│   │   └── mastery_evaluator.py             # ⭐ 이해도 평가\n│   │\n│   └── tools/                               # 🔧 유틸리티\n│       ├── okf_validator.py\n│       └── okf_visualizer.py\n│\n├── storage/                                 # 📂 런타임 데이터\n│   ├── events.log\n│   ├── learner_progress.json                # ⭐ 학습자 진척도\n│   └── mastered_concepts.log                # ⭐ 마스터 기록\n│\n├── dist/                                    # 📂 웹 대시보드\n│   └── index.html                           # 학습 진척도 시각화\n│\n├── experiments/                             # 📊 실험용\n│   └── learner_simulation/                  # 학습자 시뮬레이션\n│\n├── requirements.txt\n├── pyproject.toml\n├── README.md\n└── plan_revised.md                          # 본 문서\n```\n\n---\n\n## 📋 수정된 구현 로드맵 (Phase 1~5)\n\n### Phase 1: 프로젝트 환경 및 OKF KB 초기 구축 (1주)\n\n| 작업 | 설명 | 출력물 |\n|---|---|---|\n| **1.1 환경 설정** | Python 3.11+ 가상환경, `activegraph==1.10.0`, `pyyaml`, `marker-pdf`, `pandas`, `scipy`, `pytest` 설치 | `requirements.txt`, `pyproject.toml` |\n| **1.2 OKF KB 초기화** | `.okf/` 디렉토리 생성, `index.md`, `log.md` 작성 | `.okf/index.md` |\n| **1.3 nano‑vLLM Module 0~4 개념 OKF화** | Module 0~4의 10개 원자적 개념 + 4개 복합 개념 OKF 파일 작성 | `.okf/01_atomic_concepts/*.md`, `.okf/02_composite_concepts/*.md` |\n| **1.4 개념 관계 정의** | `PREREQUISITE_OF`, `COMPOSED_OF` 관계 명시 | 각 OKF 파일의 `prerequisites`, `composes_into` 필드 |\n| **1.5 ActiveGraph 이벤트 스토어 구현** | `event_store.py`, `topics.py`, `cache.py` 기본 구현 | `src/active_graph/` |\n\n---\n\n### Phase 2: Module 5~7 OKF화 및 Learning Path 완성 (1주)\n\n> ⭐ **이번 수정안의 핵심 단계**\n\n| 작업 | 설명 | 출력물 |\n|---|---|---|\n| **2.1 Module 5 OKF화** | Memory Management 개념 OKF 파일 작성 (`memory_pool.md`, `block_allocator.md`, `swap_manager.md`, `block_manager.md`) | `.okf/01_atomic_concepts/memory_pool.md` 등 |\n| **2.2 Module 6 OKF화** | Prefix Caching 개념 OKF 파일 작성 (`prefix_cache.md`, `cache_hit_detection.md`, `caching_strategy.md`) | `.okf/01_atomic_concepts/prefix_cache.md` 등 |\n| **2.3 Module 7 OKF화** | Distributed Serving 개념 OKF 파일 작성 (`distributed_kv.md`, `load_balancer.md`, `fault_tolerance.md`, `distributed_serving.md`) | `.okf/01_atomic_concepts/distributed_kv.md` 등 |\n| **2.4 Learning Path 완성** | Module 3→5→6→7 전체 학습 경로 정의 | `.okf/00_meta/learning_path.md` |\n| **2.5 Module 매핑 문서 작성** | 각 Module과 개념 간 매핑 테이블 | `.okf/03_modules/module_*.md` |\n| **2.6 OKF 검증** | `okf_validator.py --strict` 실행 | 검증 통과 |\n\n---\n\n### Phase 3: Learning Guide Agent 구현 (2주)\n\n| 작업 | 설명 | 출력물 |\n|---|---|---|\n| **3.1 Brick 01 (Injestor)** | `.okf/` 변경 감지 및 `KNOWLEDGE_MODIFIED` 이벤트 발행 | `src/agent_core/injestor.py` |\n| **3.2 Brick 02 (Compiler)** | 개념 간 관계 그래프 컴파일 (`REFERENCES`, `PREREQUISITE_OF`, `COMPOSED_OF`) | `src/agent_core/compiler.py` |\n| **3.3 Learning Guide Agent (`learning_guide.py`)** | - 학습자의 현재 진척도 조회<br>- 선행 조건이 충족된 다음 개념 추천<br>- `SUGGESTS_NEXT` 이벤트 발행 | `src/agents/learning_guide.py` |\n| **3.4 Progress Tracker (`progress_tracker.py`)** | - 학습자의 개념 상태(`draft` → `learning` → `learned` → `mastered`) 관리<br>- `STATUS_UPDATED` 이벤트 발행 | `src/agents/progress_tracker.py` |\n| **3.5 Concept Explainer (`concept_explainer.py`)** | - 특정 개념에 대한 맞춤형 설명 생성<br>- 관련 다이어그램 및 코드 예제 포함 | `src/agents/concept_explainer.py` |\n| **3.6 Mastery Evaluator (`mastery_evaluator.py`)** | - 개념 이해도 평가 (퀴즈/실습 과제 자동 생성)<br>- 평가 결과에 따라 `mastered` 상태 부여 | `src/agents/mastery_evaluator.py` |\n\n---\n\n### Phase 4: 대시보드 및 시각화 (1주)\n\n| 작업 | 설명 | 출력물 |\n|---|---|---|\n| **4.1 Brick 04 (Browser)** | ActiveGraph 이벤트를 웹소켓으로 스트리밍 | `src/agent_core/browser.py` |\n| **4.2 학습 진척도 대시보드** | - 개념 그래프 시각화 (Cytoscape.js)<br>- 학습 상태별 색상 구분 (초록: mastered, 파랑: learned, 회색: draft)<br>- 추천 개념 하이라이트 | `dist/index.html` |\n| **4.3 OKF Visualizer 연동** | `okf_visualize.py`로 정적 그래프 생성 | `dist/viz.html` |\n\n---\n\n### Phase 5: 실험 및 검증 (1주)\n\n| 작업 | 설명 | 출력물 |\n|---|---|---|\n| **5.1 학습자 시뮬레이션** | 가상 학습자 에이전트가 Learning Guide Agent의 추천을 따라 학습하는 시뮬레이션 | `experiments/learner_simulation/` |\n| **5.2 성능 측정** | - 학습 시간 (개념당 소요 시간)<br>- 개념 정확도 (마스터 평가 점수)<br>- 학습 경로 이탈률 | 실험 결과 CSV |\n| **5.3 OKF 검증 및 CI 연동** | GitHub Actions에서 `.okf/` 자동 검증 | `.github/workflows/validate.yml` |\n\n---\n\n## 🧠 Learning Guide Agent 동작 상세\n\n### 에이전트 흐름도\n\n```\n[학습자 상태 조회]\n     │\n     ▼\n┌─────────────────────────────────────────────────────────────────┐\n│ Learning Guide Agent (src/agents/learning_guide.py)           │\n│                                                                 │\n│  1. 현재 학습자의 mastered/learned 개념 목록 조회              │\n│  2. 전체 개념 그래프에서 선행 조건이 모두 충족된 개념 검색      │\n│  3. 학습 경로(learning_path.md) 기준 우선순위 정렬             │\n│  4. 상위 3개 개념 추천 (SUGGESTS_NEXT 이벤트 발행)            │\n└─────────────────────────────────────────────────────────────────┘\n     │\n     ▼\n[학습자가 개념 학습 시작] (status: draft → learning)\n     │\n     ▼\n┌─────────────────────────────────────────────────────────────────┐\n│ Concept Explainer (src/agents/concept_explainer.py)           │\n│                                                                 │\n│  1. 해당 개념의 OKF 파일에서 설명, 다이어그램, 코드 예제 로드   │\n│  2. 선행 개념과의 연결 관계 시각화                             │\n│  3. 이해를 돕는 맞춤형 설명 생성 (LLM)                          │\n└─────────────────────────────────────────────────────────────────┘\n     │\n     ▼\n[학습자가 퀴즈/실습 완료]\n     │\n     ▼\n┌─────────────────────────────────────────────────────────────────┐\n│ Mastery Evaluator (src/agents/mastery_evaluator.py)           │\n│                                                                 │\n│  1. 개념 이해도 평가 (퀴즈 정답률, 코드 실행 성공 여부)        │\n│  2. 평가 점수 ≥ 80% → status: mastered                         │\n│  3. 평가 점수 < 80% → status: learning (재학습 권장)           │\n│  4. STATUS_UPDATED 이벤트 발행                                 │\n└─────────────────────────────────────────────────────────────────┘\n     │\n     ▼\n[진척도 업데이트] → Learning Guide Agent 재실행 (루프)\n```\n\n### OKF 상태 필드 활용\n\n각 개념 파일의 `status` 필드를 학습 단계에 따라 업데이트:\n\n```yaml\n# .okf/01_atomic_concepts/continuous_batching.md\n---\ntype: AtomicConcept\nid: atomic.continuous_batching\ntitle: Continuous Batching\nstatus: mastered   # draft → learning → learned → mastered\nlearning_history:\n  - started_at: 2026-08-05T10:00:00Z\n  - mastered_at: 2026-08-06T14:30:00Z\n  - attempts: 2\n  - quiz_score: 0.85\n---\n```\n\n---\n\n## 📊 성공 측정 지표 (OKR)\n\n| Objective | Key Result | 측정 방법 |\n|---|---|---|\n| **학습 효율성 향상** | 평균 개념 학습 시간 25% 단축 | 시뮬레이션 vs baseline (순차 학습) |\n| **개념 이해도 향상** | 마스터 평가 평균 점수 80% 이상 | Mastery Evaluator 자동 채점 |\n| **에이전트 추천 정확도** | 추천 개념 학습 성공률 75% 이상 | 추천→학습→마스터 완료 비율 |\n| **OKF KB 품질** | OKF v0.2 검증 통과 (0 warning) | `okf_validator.py --strict` |\n| **시스템 감사성** | 모든 에이전트 행동 이벤트 로그 기록 | `storage/events.log` 크기 > 0 |\n\n---\n\n## 🔧 기술 스택 요약\n\n| 계층 | 기술 |\n|---|---|\n| **Runtime** | ActiveGraph 1.10.0 (event-sourced) |\n| **Knowledge Base** | OKF v0.2 (Markdown + YAML frontmatter) |\n| **LLM** | Claude Sonnet 4.5 (or equivalent) |\n| **PDF Processing** | Marker (converter) |\n| **Visualization** | Cytoscape.js, Mermaid |\n| **Testing** | pytest, hypothesis |\n| **CI/CD** | GitHub Actions |\n\n---\n\n## 📝 다음 단계 제안\n\n1. **즉시 실행**: Phase 1.1~1.4 (환경 설정 및 Module 0~4 OKF화)\n2. **2주 후**: Phase 2.1~2.3 (Module 5~7 OKF화) 완료 목표\n3. **4주 후**: Phase 3.3~3.6 (Learning Guide Agent) MVP 완료\n4. **6주 후**: Phase 5 (실험 및 검증) + 논문 초고 작성\n\n---\n\n> 💡 **핵심 인사이트**: 원래 설계의 **\"논리적 모순 검출\"** 기능은 Learning Guide Agent의 **\"개념 간 관계 검증\"** 으로 자연스럽게 확장됩니다. Critic Agent는 **\"선행 조건 누락\"** 또는 **\"잘못된 의존성\"** 을 탐지하여, 학습자가 비효율적인 경로로 학습하지 않도록 방지합니다. 이는 **nano‑vLLM의 복잡한 계층적 구조**를 학습하는 데 매우 적합합니다.",
+    "frontmatter": {},
+    "links": []
+  },
+  {
+    "id": "meta.glossary",
+    "title": "nano-vLLM 핵심 용어 사전 (Glossary)",
+    "type": "Document",
+    "path": "00_meta/glossary.md",
+    "group": "meta",
+    "body": "# nano-vLLM 핵심 용어 사전 (Glossary)\n\n---\n\n## 🔤 주요 용어 정의 (A ~ Z)\n\n### AtomicConcept (원자적 개념)\n- 더 이상 하위 개념으로 분해되지 않는 가장 작은 지식 단위. (예: `Prefill Phase`, `KV Cache Token Slot`)\n\n### CompositeConcept (복합 개념)\n- 두 개 이상의 원자적 개념 및 하위 복합 개념이 결합되어 형성된 시스템 단위. (예: `Block Manager`, `Autoregressive Loop`)\n\n### Continuous Batching (연속 배치 처리)\n- 프롬프트(Prefill)와 생성(Decode) 단계의 요청들을 요청 단위가 아닌 토큰/Iteration 단위로 동적 스케줄링하여 GPU 활용률을 극대화하는 기법.\n\n### Decode Phase (디코드 단계)\n- 이전 단계에서 생성된 토큰들을 입력으로 받아 다음 토큰을 1개씩 순차적으로 생성하는 단계 (Latency-sensitive, Memory bandwidth bound).\n\n### KV Cache (Key-Value 캐시)\n- 자기회귀(Autoregressive) 생성 시 이전 토큰들의 Key, Value 행렬을 메모리에 저장하여 중복 계산을 방지하는 메커니즘.\n\n### PagedAttention (페이지드 어텐션)\n- 가상 메모리의 페이징(Paging) 기법을 어텐션 메커니즘에 도입하여, KV 캐시를 연속되지 않은 물리 메모리 블록(Block) 단위로 파편화 없이 관리하는 아키텍처.\n\n### Prefill Phase (프리필 단계)\n- 입력 프롬프트 전체 토큰을 병렬로 가공하여 첫 번째 토큰을 생성하고 최초 KV 캐시를 구축하는 단계 (Compute bound).\n\n### Prefix Caching (프리픽스 캐싱)\n- 공통된 프롬프트 프론트엔드(시스템 프롬프트 등)의 KV 캐시를 래직스 트리(Radix Tree) 등으로 재사용하여 프리필 시간을 단축하는 기술.",
+    "frontmatter": {
+      "type": "Document",
+      "id": "meta.glossary",
+      "title": "nano-vLLM 핵심 용어 사전 (Glossary)",
+      "description": "LLM 추론 및 vLLM 서빙 엔진에서 사용되는 핵심 도메인 용어 정의",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:06:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:06:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "meta.learning_path",
+    "title": "nano-vLLM 7개 모듈 전체 학습 경로 (Learning Path)",
+    "type": "Document",
+    "path": "00_meta/learning_path.md",
+    "group": "meta",
+    "body": "# nano-vLLM 7개 모듈 전체 학습 경로 (Learning Path)\n\n> **Brick-by-Brick 학습 철학**: 복잡한 LLM 서빙 엔진 아키텍처를 한번에 이해하려 하지 않고, 원자적 개념(Atomic Concept)을 하나씩 마스터(`mastered`)한 뒤 선행 조건(`PREREQUISITE_OF`)을 충족시켜 상위 복합 시스템(Composite Concept)으로 조립합니다.\n\n---\n\n## 🗺️ 전체 계층적 학습 흐름 (Hierarchy Flow)\n\n```\n[Module 00: 기본 개념] ──► [Module 01: 자기회귀 생성] ──► [Module 02: 정적 KV 캐시]\n                                                                  │\n┌─────────────────────────────────────────────────────────────────┘\n▼\n[Module 03: Continuous Batching] ──► [Module 04: PagedAttention]\n                                           │\n┌──────────────────────────────────────────┘\n▼\n[Module 05: Memory Pool / Allocator] ──► [Module 06: Prefix Caching] ──► [Module 07: Multi-GPU / Distributed]\n```\n\n---\n\n## 🧱 모듈별 선행조건 & 조립 단계 (Step-by-Step Prerequisites)\n\n### 1단계: Foundational & Autoregressive (Module 00 ~ Module 02)\n1. **[prefill_phase](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefill_phase.md)** & **[decode_phase](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/decode_phase.md)** 학습\n   - *선행 조건*: 없음 (원자적 개념)\n2. **[kv_cache](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/kv_cache.md)** 학습\n   - *선행 조건*: `prefill_phase`, `decode_phase`\n3. **[autoregressive_loop](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/autoregressive_loop.md)** 조립\n   - *조립 구성요소*: `kv_cache`, `attention`, `sampling`\n\n### 2단계: Batching & Memory Paging (Module 03 ~ Module 04)\n4. **[continuous_batching](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/continuous_batching.md)** 학습\n   - *선행 조건*: `autoregressive_loop`\n5. **[paged_kv_cache](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/paged_kv_cache.md)** 학습\n   - *선행 조건*: `kv_cache`, `continuous_batching`\n\n### 3단계: Advanced Systems (Module 05 ~ Module 07)\n6. **[block_allocator](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/block_allocator.md)** & **[memory_pool](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/memory_pool.md)** 학습\n7. **[prefix_cache](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefix_cache.md)** & **[distributed_kv](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/distributed_kv.md)** 학습 및 최상위 복합 서빙 엔진 조립",
+    "frontmatter": {
+      "type": "Document",
+      "id": "meta.learning_path",
+      "title": "nano-vLLM 7개 모듈 전체 학습 경로 (Learning Path)",
+      "description": "원자적 개념(AtomicConcept)부터 시작하여 복합 시스템(CompositeConcept)으로 쌓아 올려 7개 모듈을 정복하는 Brick-by-Brick 학습 가이드",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:06:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:06:00+00:00"
+        }
+      ]
+    },
+    "links": [
+      [
+        "prefill_phase",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefill_phase.md"
+      ],
+      [
+        "decode_phase",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/decode_phase.md"
+      ],
+      [
+        "kv_cache",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/kv_cache.md"
+      ],
+      [
+        "autoregressive_loop",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/autoregressive_loop.md"
+      ],
+      [
+        "continuous_batching",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/continuous_batching.md"
+      ],
+      [
+        "paged_kv_cache",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/paged_kv_cache.md"
+      ],
+      [
+        "block_allocator",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/block_allocator.md"
+      ],
+      [
+        "memory_pool",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/memory_pool.md"
+      ],
+      [
+        "prefix_cache",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefix_cache.md"
+      ],
+      [
+        "distributed_kv",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/distributed_kv.md"
+      ]
+    ]
+  },
+  {
+    "id": "atomic.attention",
+    "title": "Scaled Dot-Product Attention (어텐션 메커니즘)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/attention.md",
+    "group": "atomic",
+    "body": "# Scaled Dot-Product Attention (어텐션 메커니즘)\n\n## 📌 개념 정의\n\n**Scaled Dot-Product Attention**은 트랜스포머 아키텍처의 핵심 연산으로, 입력 시퀀스 토큰 간의 관련성을 계산하여 문맥 정보를 융합합니다.\n\n$$\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V$$\n\n- **Prefill 단계**: $Q, K, V$ 모두 전체 프롬프트 시퀀스 길이를 가져 병렬 GEMM 연산 수행\n- **Decode 단계**: $Q$는 길이 1이며, $K, V$는 KV Cache에 보관된 전체 과거 시퀀스와 어텐션 연산(GEMV) 수행\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITE_OF**:\n  - `decoder_layer`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.attention",
+      "title": "Scaled Dot-Product Attention (어텐션 메커니즘)",
+      "description": "Query, Key, Value 텐서를 통해 시퀀스 내 토큰 간 가중 문맥 표현을 계산하는 핵심 어텐션 메커니즘",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.decode_phase",
+    "title": "Decode Phase (디코드 단계)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/decode_phase.md",
+    "group": "atomic",
+    "body": "# Decode Phase (디코드 단계)\n\n## 📌 개념 정의\n\n**Decode Phase**(또는 Token Generation Phase)는 Prefill Phase 이후 `EOS(End of Sequence)` 토큰이 나오거나 최대 생성 길이에 도달할 때까지 토큰을 1개씩 자기회귀(Autoregressively) 방식으로 반복 생성하는 단계입니다.\n\n이 단계는 다음과 같은 기술적 특징을 가집니다:\n1. **Sequential Token-by-Token Generation**: 이전 스텝에서 생성된 토큰 단 1개만 입력으로 사용함.\n2. **Memory Bandwidth-Bound Operation**: 매 스텝마다 전체 모델 가중치(Weights)와 누적된 KV 캐시를 GPU HBM에서 SRAM으로 불러와야 하므로 메모리 대역폭(GB/s)이 주 병목임.\n3. **KV Cache Traversal**: 새 토큰의 K, V 벡터 1개를 계산한 후, 기존 저장된 전체 KV 캐시와 어텐션 연산(GEMV)을 수행함.\n\n---\n\n## 📐 연산 차원 (Tensor Shape)\n\n- **Input Tensor Shape**: `[Batch Size, 1, Hidden Size]`\n- **Attention Map Matrix**: `[Batch Size, Num Heads, 1, Current Seq Length]`\n- **Updated KV Cache Shape**: `[Batch Size, Num Heads, Current Seq Length, Head Dim]`\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITES**:\n  - `prefill_phase`\n- **PREREQUISITE_OF**:\n  - `inference_model`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.decode_phase",
+      "title": "Decode Phase (디코드 단계)",
+      "description": "이전 단계 토큰 1개만을 받아 다음 토큰을 순차적으로 1개씩 생성하는 Memory Bandwidth-bound 연산 단계",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:11:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:11:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.ffn",
+    "title": "Feed-Forward Network (FFN / MLP)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/ffn.md",
+    "group": "atomic",
+    "body": "# Feed-Forward Network (FFN / MLP)\n\n## 📌 개념 정의\n\n**Feed-Forward Network (FFN)** 또는 MLP(Multi-Layer Perceptron) 블록은 어텐션 결과 텐서를 받아 각 토큰별로 비선형 투영(Projection) 및 차원 확장을 수행하는 레이어입니다.\n\n최근 LLM(Llama, Mistral 등)에서는 SwiGLU 또는 GELU 활성화 함수 기반 3개의 선형 레이어(Gate, Up, Down Projection)로 구성됩니다.\n\n$$\\text{FFN}(x) = (\\text{Swish}(xW_{\\text{gate}}) \\odot xW_{\\text{up}}) W_{\\text{down}}$$\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITE_OF**:\n  - `decoder_layer`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.ffn",
+      "title": "Feed-Forward Network (FFN / MLP)",
+      "description": "어텐션층을 거친 각 토큰의 비선형 특징 표현을 위치별(Position-wise)로 독립적 변환하는 신경망 블록",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.inference_only",
+    "title": "Inference-Only Workload (추론 전용 워크로드)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/inference_only.md",
+    "group": "atomic",
+    "body": "# Inference-Only Workload (추론 전용 워크로드)\n\n## 📌 개념 정의\n\n**Inference-Only Workload**는 이미 학습 완료된 LLM 모델 파라미터를 고정(Freeze)한 상태에서 입력 텍스트에 대한 Forward Pass만을 수행하는 작업입니다.\n\n학습(Training) 단계와 비교했을 때 다음과 같은 핵심 차이점이 존재합니다:\n1. **No Gradient Accumulation**: 역전파(Backpropagation)를 위한 활성화 값(Activation) 저장이 불필요함.\n2. **Deterministic Weights**: 모델 가중치(Weights)가 불변(Immutable) 상태로 메모리에 유지됨.\n3. **KV Cache Dependency**: 이전 단계 토큰들의 연산 재사용을 위해 KV 캐시 관리가 핵심 성능 병목 요소로 작용함.\n\n---\n\n## 📊 연산 특성 비교\n\n| 구분 | Training | Inference-Only |\n|---|---|---|\n| **Pass** | Forward + Backward Pass | Forward Pass Only |\n| **Memory Bottleneck** | Activation memory + Optimizer States | Model Weights + KV Cache |\n| **Compute Pattern** | Large GEMM operations | GEMM (Prefill) + GEMV (Decode) |\n| **Batching Strategy** | Static Uniform Batching | Dynamic Continuous Batching |\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITE_OF**:\n  - `prefill_phase`\n  - `decode_phase`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.inference_only",
+      "title": "Inference-Only Workload (추론 전용 워크로드)",
+      "description": "학습(Training)과 달리 역전파 및 가중치 업데이트가 없으며 Forward Pass 및 메모리 읽기 중심인 추론 고유의 실행 특성",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:11:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:11:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.kv_cache",
+    "title": "Key-Value Cache (KV 캐시)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/kv_cache.md",
+    "group": "atomic",
+    "body": "# Key-Value Cache (KV 캐시)\n\n## 📌 개념 정의\n\n**KV Cache**는 자기회귀(Autoregressive) 텍스트 생성 과정에서 이미 계산된 이전 토큰들의 Key($K$) 및 Value($V$) 텐서를 메모리에 저장하고, 매 디코드 스텝마다 신규 토큰의 $K, V$만 새로 계산하여 기존 캐시에 병합(Append)하는 기술입니다.\n\nKV Cache가 없을 경우 $t$번째 토큰을 생성할 때 1부터 $t-1$번째 토큰까지의 어텐션을 매번 처음부터 재계산해야 하므로, 복잡도가 $O(N^2)$에서 $O(N)$으로 획기적으로 줄어듭니다.\n\n---\n\n## 📐 KV Cache 텐서 예시\n\n- **Key Cache Shape**: `[Batch Size, Num Key Heads, Current Seq Length, Head Dim]`\n- **Value Cache Shape**: `[Batch Size, Num Key Heads, Current Seq Length, Head Dim]`\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITES**:\n  - `prefill_phase`\n  - `decode_phase`\n- **PREREQUISITE_OF**:\n  - `autoregressive_loop`\n  - `static_kv_cache` (Module 02)\n  - `paged_kv_cache` (Module 04)",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.kv_cache",
+      "title": "Key-Value Cache (KV 캐시)",
+      "description": "자기회귀 생성 과정에서 이전 스텝 토큰들의 Key, Value 행렬을 메모리에 보관하여 재계산을 방지하는 필수 기법",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.prefill_phase",
+    "title": "Prefill Phase (프리필 단계)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/prefill_phase.md",
+    "group": "atomic",
+    "body": "# Prefill Phase (프리필 단계)\n\n## 📌 개념 정의\n\n**Prefill Phase**(또는 Prompt Processing Phase)는 사용자가 입력한 $N$개의 프롬프트 토큰 전체를 LLM 모델에 한 번에 주입하여 첫 번째 출력 토큰(First Token)을 생성하는 단계입니다.\n\n이 단계는 다음과 같은 기술적 특징을 가집니다:\n1. **Parallel Execution**: $N$개 토큰에 대한 행렬 곱 연산을 GPU Tensor Core에서 한 번에 병렬 처리함.\n2. **Compute-Bound Operation**: Arithmetic Intensity(FLOP/Byte)가 높아 GPU 연산 성능(TFLOPS)이 주 병목 요인임.\n3. **KV Cache Initialization**: $N$개 토큰 각각에 해당하는 Key, Value 벡터들을 계산하여 최초 KV 캐시 블록에 할당 및 대치함.\n\n---\n\n## 📐 연산 차원 (Tensor Shape)\n\n- **Input Tensor Shape**: `[Batch Size, Prompt Length, Hidden Size]`\n- **Attention Map Matrix**: `[Batch Size, Num Heads, Prompt Length, Prompt Length]`\n- **Output KV Cache Shape**: `[Batch Size, Num Heads, Prompt Length, Head Dim]`\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITES**:\n  - `inference_only`\n- **PREREQUISITE_OF**:\n  - `decode_phase`\n  - `inference_model`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.prefill_phase",
+      "title": "Prefill Phase (프리필 단계)",
+      "description": "입력 프롬프트 전체 토큰을 병렬 처리하여 첫 번째 토큰을 생성하고 Initial KV Cache를 구축하는 Compute-bound 연산 단계",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:11:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:11:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.sampling",
+    "title": "Token Sampling Strategies (토큰 샘플링 기법)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/sampling.md",
+    "group": "atomic",
+    "body": "# Token Sampling Strategies (토큰 샘플링 기법)\n\n## 📌 개념 정의\n\n**Sampling** 기법은 LLM의 최종 Linear Head를 거쳐 나온 Logit 텐서에서 다음 생성될 단어(Token ID)를 결정하는 알고리즘입니다.\n\n### 핵심 제어 파라미터:\n1. **Temperature ($T$)**: 확률 분포의 무작위성(Randomness) 조율 ($T \\to 0$일수록 Greedy Search)\n2. **Top-k Sampling**: Logit 상위 $k$개 토큰 후보만 남기고 나머지 제외\n3. **Top-p (Nucleus) Sampling**: 누적 확률 분포가 $p$에 도달할 때까지 상위 토큰들만 동적으로 선별\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITE_OF**:\n  - `autoregressive_loop`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.sampling",
+      "title": "Token Sampling Strategies (토큰 샘플링 기법)",
+      "description": "모델의 Logit 분포에서 다음 토큰 ID를 결정하기 위한 확률 필터링 및 추출 기법",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.seq_len_budget",
+    "title": "Sequence Length Budget (시퀀스 예산 정책)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/seq_len_budget.md",
+    "group": "atomic",
+    "body": "# Sequence Length Budget (시퀀스 예산 정책)\n\n## 📌 개념 정의\n\n**Sequence Length Budget**은 추론 요청 생성 시 `max_tokens` 또는 `max_context_length` 값을 상한선으로 설정하여, 정적 KV 캐시 버퍼가 허용 범위 내에서만 인덱싱되도록 제어하는 안전 규칙(Budget Rule)입니다.\n\n현재 시퀀스 길이가 할당된 예산을 초과하면 캐시 오버플로우 예외를 발생시키거나 요청을 거부(Reject)합니다.\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITE_OF**:\n  - `static_cache_manager`",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.seq_len_budget",
+      "title": "Sequence Length Budget (시퀀스 예산 정책)",
+      "description": "요청별 maximum context length를 지정하여 버퍼 오버플로우를 제어하는 메모리 예산 관리 규칙",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:22:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:22:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "atomic.static_kv_cache",
+    "title": "Static KV Cache (정적 KV 캐시 버퍼)",
+    "type": "AtomicConcept",
+    "path": "01_atomic_concepts/static_kv_cache.md",
+    "group": "atomic",
+    "body": "# Static KV Cache (정적 KV 캐시 버퍼)\n\n## 📌 개념 정의\n\n**Static KV Cache**는 요청 처리 전, 생성 가능한 최대 토큰 수(`max_seq_len`)에 해당하는 연속적인 메모리 공간을 GPU에 동적으로 확장하지 않고 한 번에 미리 할당(`Pre-allocate`)해 두는 캐싱 방식입니다.\n\n동적 메모리 재할당(Reallocation) 및 메모리 복사 오버헤드를 방지하여 디코드 속도가 안정적이지만, 실제 생성 토큰 수가 적을 경우 메모리 낭비(Internal Fragmentation)가 심하다는 단점이 있습니다.\n\n---\n\n## 📐 텐서 구조 예시\n\n```python\n# 사전 할당 텐서 차원\nkey_buffer = torch.zeros(batch_size, num_heads, max_seq_len, head_dim)\nvalue_buffer = torch.zeros(batch_size, num_heads, max_seq_len, head_dim)\n\n# t번째 토큰 슬라이스 업데이트\nkey_buffer[:, :, current_pos, :] = new_key\nvalue_buffer[:, :, current_pos, :] = new_value\n```\n\n---\n\n## 🔗 관련 관계 (Relationships)\n\n- **PREREQUISITES**:\n  - `kv_cache` (Module 01)\n- **PREREQUISITE_OF**:\n  - `static_cache_manager`\n  - `paged_kv_cache` (Module 04 - 한계 극복 대상)",
+    "frontmatter": {
+      "type": "AtomicConcept",
+      "id": "atomic.static_kv_cache",
+      "title": "Static KV Cache (정적 KV 캐시 버퍼)",
+      "description": "최대 시퀀스 길이에 맞추어 메모리를 연속 텐서로 사전 할당(Pre-allocation)하는 캐시 구조",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:22:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:22:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "composite.autoregressive_loop",
+    "title": "Autoregressive Generation Loop (자기회귀 생성 루프)",
+    "type": "CompositeConcept",
+    "path": "02_composite_concepts/autoregressive_loop.md",
+    "group": "composite",
+    "body": "# Autoregressive Generation Loop (자기회귀 생성 루프)\n\n## 📌 개념 정의\n\n**Autoregressive Generation Loop**는 Module 01의 핵심 복합 시스템으로, `decoder_layer`를 통한 Forward pass, `kv_cache` 업데이터, `sampling` 알고리즘을 결합하여 `EOS` 토큰이 생성될 때까지 디코드 루프를 반복 구동합니다.\n\n---\n\n## 🧱 시스템 루프 구조\n\n```\n[Prefill 토큰 텐서 & KV Cache 초기화]\n               │\n               ▼\n   ┌───► [Decode Step Forward Pass] ◄───┐\n   │           │                        │\n   │           ▼                        │\n   │     [KV Cache Append]              │ Repeat Loop\n   │           │                        │ (Until EOS Token)\n   │           ▼                        │\n   │     [Logits & Sampling]            │\n   │           │                        │\n   └───────────┴── Next Token Output ───┘\n```\n\n---\n\n## 🔗 조립 정보 (Composition & Relationships)\n\n- **COMPOSED_OF**:\n  - `decoder_layer`\n  - `kv_cache`\n  - `sampling`\n- **PREREQUISITES**:\n  - `inference_model`\n- **PREREQUISITE_OF**:\n  - `continuous_batching` (Module 03)",
+    "frontmatter": {
+      "type": "CompositeConcept",
+      "id": "composite.autoregressive_loop",
+      "title": "Autoregressive Generation Loop (자기회귀 생성 루프)",
+      "description": "Decoder Layer, KV Cache, Sampling이 통합되어 토큰을 1개씩 반복 생성하는 순차 제어 루프",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "composite.decoder_layer",
+    "title": "Transformer Decoder Layer (트랜스포머 디코더 레이어)",
+    "type": "CompositeConcept",
+    "path": "02_composite_concepts/decoder_layer.md",
+    "group": "composite",
+    "body": "# Transformer Decoder Layer (트랜스포머 디코더 레이어)\n\n## 📌 개념 정의\n\n**Decoder Layer**는 `attention` 연산 블록과 `ffn` 블록이 잔차 연결(Residual Connection) 및 층 정규화(RMSNorm/LayerNorm)와 조합되어 수십 층으로 쌓이는 복합 개념 구조입니다.\n\n---\n\n## 🧱 구조적 파이프라인\n\n```\nInput x\n  │\n  ├──► RMSNorm ──► Attention ──(KV Cache Sync)──┐\n  │                                             │\n  ▼                                             ▼\nAdd Residual <──────────────────────────────────┘\n  │\n  ├──► RMSNorm ──► Feed-Forward (FFN) ──────────┐\n  │                                             │\n  ▼                                             ▼\nAdd Residual <──────────────────────────────────┘\n  │\nOutput Layer Token Hidden State\n```\n\n---\n\n## 🔗 조립 정보 (Composition & Relationships)\n\n- **COMPOSED_OF**:\n  - `attention`\n  - `ffn`\n- **PREREQUISITE_OF**:\n  - `autoregressive_loop`",
+    "frontmatter": {
+      "type": "CompositeConcept",
+      "id": "composite.decoder_layer",
+      "title": "Transformer Decoder Layer (트랜스포머 디코더 레이어)",
+      "description": "Attention 블록과 FFN 블록이 잔차 연결(Residual Connection) 및 RMSNorm과 결합된 기본 트랜스포머 구조 단위",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "composite.inference_model",
+    "title": "Inference Model Pipeline (추론 파이프라인)",
+    "type": "CompositeConcept",
+    "path": "02_composite_concepts/inference_model.md",
+    "group": "composite",
+    "body": "# Inference Model Pipeline (추론 파이프라인)\n\n## 📌 개념 정의\n\n**Inference Model Pipeline**은 원자적 개념인 `prefill_phase`와 `decode_phase`가 결합(`COMPOSED_OF`)하여 입력 프롬프트를 최종 텍스트 응답으로 변환하는 기본 추론 모델 시스템입니다.\n\n---\n\n## 🧱 구조적 파이프라인 (Structural Pipeline)\n\n```\n[입력 프롬프트]\n      │\n      ▼\n┌─────────────────────────────────────────────────────────┐\n│ 1. Prefill Phase (Compute-bound)                        │\n│    - Prompt Processing (Parallel GEMM)                  │\n│    - First Token & Initial KV Cache Build               │\n└─────────────────────────────────────────────────────────┘\n      │\n      ▼\n┌─────────────────────────────────────────────────────────┐\n│ 2. Decode Phase Loop (Memory Bandwidth-bound)           │\n│    - Token-by-Token Autoregressive Generation           │\n│    - Read/Append KV Cache & GEMV Attention              │\n│    - Stop Condition Check (EOS or Max Length)           │\n└─────────────────────────────────────────────────────────┘\n      │\n      ▼\n[최종 생성 텍스트]\n```\n\n---\n\n## 🔗 조립 정보 (Composition & Relationships)\n\n- **COMPOSED_OF**:\n  - `prefill_phase`\n  - `decode_phase`\n  - `inference_only`\n- **PREREQUISITE_OF**:\n  - `autoregressive_loop` (Module 01)",
+    "frontmatter": {
+      "type": "CompositeConcept",
+      "id": "composite.inference_model",
+      "title": "Inference Model Pipeline (추론 파이프라인)",
+      "description": "Prefill Phase와 Decode Phase를 연동하여 완전한 LLM 텍스트 생성을 수행하는 기본 복합 추론 시스템",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:11:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:11:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "composite.static_cache_manager",
+    "title": "Static Cache Manager (정적 캐시 관리자)",
+    "type": "CompositeConcept",
+    "path": "02_composite_concepts/static_cache_manager.md",
+    "group": "composite",
+    "body": "# Static Cache Manager (정적 캐시 관리자)\n\n## 📌 개념 정의\n\n**Static Cache Manager**는 `static_kv_cache` 버퍼와 `seq_len_budget` 관리 정책이 수신되어 완성된 기초 캐시 관리 컴포넌트입니다.\n\n---\n\n## 🧱 컴포넌트 메커니즘\n\n```\n[New Key, Value Tensor (1 Token)]\n              │\n              ▼\n┌─────────────────────────────────────────────────────────┐\n│ Static Cache Manager                                    │\n│  1. Check seq_len_budget limit                          │\n│  2. Insert K,V to static_kv_cache buffer at current_pos │\n│  3. Increment current_pos pointer                       │\n│  4. Return valid slice buffer for Attention computation │\n└─────────────────────────────────────────────────────────┘\n              │\n              ▼\n[Valid Key/Value Slice Matrix for Attention]\n```\n\n---\n\n## 🔗 조립 정보 (Composition & Relationships)\n\n- **COMPOSED_OF**:\n  - `static_kv_cache`\n  - `seq_len_budget`\n- **PREREQUISITES**:\n  - `autoregressive_loop` (Module 01)\n- **PREREQUISITE_OF**:\n  - `continuous_batching` (Module 03)",
+    "frontmatter": {
+      "type": "CompositeConcept",
+      "id": "composite.static_cache_manager",
+      "title": "Static Cache Manager (정적 캐시 관리자)",
+      "description": "Static KV Cache 버퍼 인덱싱, 토큰 Append, 슬라이스 어텐션 생성을 총괄하는 1세대 캐시 관리 엔진",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:22:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:22:00+00:00"
+        }
+      ]
+    },
+    "links": []
+  },
+  {
+    "id": "module.00_foundational",
+    "title": "Module 00: Foundational Concepts (기초 개념)",
+    "type": "Module",
+    "path": "03_modules/module_00_foundational.md",
+    "group": "module",
+    "body": "# Module 00: Foundational Concepts (기초 개념)\n\n> **모듈 목표**: vLLM 서빙 엔진을 설계하기 전, LLM 추론 과정이 **Prefill Phase(Compute-bound)**와 **Decode Phase(Memory Bandwidth-bound)**라는 두 가지 비대칭적 실행 단계로 나뉜다는 결정적 특성을 이해합니다.\n\n---\n\n## 🧱 포함된 개념 (Concepts)\n\n### 원자적 개념 (Atomic Concepts)\n- **[prefill_phase](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefill_phase.md)**: 입력 프롬프트 전체 토큰을 한 번에 병렬 처리하여 첫 번째 토큰을 생성하고 최초 KV 캐시를 구축하는 단계\n- **[decode_phase](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/decode_phase.md)**: 생성된 이전 토큰 1개만을 입력으로 받아 다음 토큰을 순차적으로 1개씩 생성하는 단계\n- **[inference_only](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/inference_only.md)**: 역전파(Backpropagation) 없이 Forward Pass만 수행되는 추론 전용 워크로드 특성\n\n### 복합 개념 (Composite Concepts)\n- **[inference_model](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/inference_model.md)**: Prefill과 Decode 단계를 통합 제어하는 기본 추론 파이프라인\n\n---\n\n## 🔗 학습 경로 및 선행 조건 (Learning Flow)\n\n```\n[inference_only]\n     │\n     ├───► [prefill_phase] (Compute-bound)  ──┐\n     │                                        ├──► [inference_model] (Composite)\n     └───► [decode_phase]  (Memory-bound)   ──┘\n```\n\n---\n\n## 📝 실습 과제 (Lab Assignment)\n\n1. `prefill_phase`와 `decode_phase`의 입력 텐서 차원(Batch Size, Sequence Length) 차이 분석하기\n2. GPU 연산 병목(Compute-bound vs Memory Bandwidth-bound) 특성 비교하기",
+    "frontmatter": {
+      "type": "Module",
+      "id": "module.00_foundational",
+      "title": "Module 00: Foundational Concepts (기초 개념)",
+      "description": "LLM 추론 동작의 두 가지 핵심 단계인 Prefill Phase와 Decode Phase의 특성을 이해하고 구분하는 기초 모듈",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:11:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:11:00+00:00"
+        }
+      ]
+    },
+    "links": [
+      [
+        "prefill_phase",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefill_phase.md"
+      ],
+      [
+        "decode_phase",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/decode_phase.md"
+      ],
+      [
+        "inference_only",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/inference_only.md"
+      ],
+      [
+        "inference_model",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/inference_model.md"
+      ]
+    ]
+  },
+  {
+    "id": "module.01_autoregressive",
+    "title": "Module 01: Autoregressive Generation (자기회귀 생성)",
+    "type": "Module",
+    "path": "03_modules/module_01_autoregressive.md",
+    "group": "module",
+    "body": "# Module 01: Autoregressive Generation (자기회귀 생성)\n\n> **모듈 목표**: LLM이 이전 토큰들을 기반으로 다음 토큰 확률 분포를 계산하고 샘플링하여 텍스트를 지속적으로 확장해 나가는 **Autoregressive Loop**를 최소 파이프라인으로 구현합니다.\n\n---\n\n## 🧱 포함된 개념 (Concepts)\n\n### 원자적 개념 (Atomic Concepts)\n- **[kv_cache](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/kv_cache.md)**: 이전 토큰들의 Key, Value 행렬을 메모리에 보관하여 중복 어텐션 계산을 방지하는 캐싱 기법\n- **[attention](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/attention.md)**: Query, Key, Value 텐서 연산을 통해 토큰 간 상호작용 문맥 점수를 산출하는 어텐션 메커니즘\n- **[ffn](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/ffn.md)**: 각 토큰 표현을 독립적으로 변환하는 Feed-Forward Network 레이어\n- **[sampling](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/sampling.md)**: 모델의 Logit 분포에서 Temperature, Top-p, Top-k 등을 적용하여 다음 토큰 ID를 선택하는 기법\n\n### 복합 개념 (Composite Concepts)\n- **[decoder_layer](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/decoder_layer.md)**: Attention과 FFN이 수신되어 형성된 Transformer 트랜스포머 블록\n- **[autoregressive_loop](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/autoregressive_loop.md)**: Decoder Layer와 Sampling, KV Cache가 통합되어 순차적으로 토큰을 생성하는 반복 루프\n\n---\n\n## 🔗 학습 경로 및 선행 조건 (Learning Flow)\n\n```\n[Module 00: inference_model]\n          │\n          ▼\n     [kv_cache]  ──┐\n     [attention] ──┼──► [decoder_layer] ──┐\n     [ffn]       ──┘                      ├──► [autoregressive_loop] (Composite)\n     [sampling]  ─────────────────────────┘\n```\n\n---\n\n## 📝 실습 과제 (Lab Assignment)\n\n1. KV Cache 미사용 시와 사용 시의 어텐션 연산 시간 복잡도($O(N^2)$ vs $O(N)$) 비교 구현하기\n2. Logits에 Temperature scaling 및 Top-p (Nucleus) 필터링을 적용하는 sampling 메서드 작성하기",
+    "frontmatter": {
+      "type": "Module",
+      "id": "module.01_autoregressive",
+      "title": "Module 01: Autoregressive Generation (자기회귀 생성)",
+      "description": "KV Cache, Attention, FFN, Sampling 기법을 활용하여 토큰을 자기회귀 방식으로 생성하는 모듈",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:15:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:15:00+00:00"
+        }
+      ]
+    },
+    "links": [
+      [
+        "kv_cache",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/kv_cache.md"
+      ],
+      [
+        "attention",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/attention.md"
+      ],
+      [
+        "ffn",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/ffn.md"
+      ],
+      [
+        "sampling",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/sampling.md"
+      ],
+      [
+        "decoder_layer",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/decoder_layer.md"
+      ],
+      [
+        "autoregressive_loop",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/autoregressive_loop.md"
+      ]
+    ]
+  },
+  {
+    "id": "module.02_basic_kv_cache",
+    "title": "Module 02: Basic KV Cache Engine (기초 KV 캐시 엔진)",
+    "type": "Module",
+    "path": "03_modules/module_02_basic_kv_cache.md",
+    "group": "module",
+    "body": "# Module 02: Basic KV Cache Engine (기초 KV 캐시 엔진)\n\n> **모듈 목표**: 동적 메모리 관리(PagedAttention)로 진입하기 전, 미리 정의된 최대 시퀀스 길이(Max Sequence Length) 예산을 바탕으로 연속된 정적 메모리 버퍼를 사전 할당하여 어텐션 연산을 가속하는 **Static KV Cache Engine**을 구축합니다.\n\n---\n\n## 🧱 포함된 개념 (Concepts)\n\n### 원자적 개념 (Atomic Concepts)\n- **[static_kv_cache](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/static_kv_cache.md)**: 최대 시퀀스 길이에 맞춰 사전 할당된 연속형 텐서 버퍼 구조\n- **[seq_len_budget](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/seq_len_budget.md)**: 메모리 파편화를 방지하기 위해 요청별로 사전 정의하는 시퀀스 예산 관리 정책\n\n### 복합 개념 (Composite Concepts)\n- **[static_cache_manager](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/static_cache_manager.md)**: 정적 텐서 버퍼의 인덱싱, 토큰 추가(Append), 오버플로우 검사를 담당하는 기초 캐시 관리자\n\n---\n\n## 🔗 학습 경로 및 선행 조건 (Learning Flow)\n\n```\n[Module 01: kv_cache]\n          │\n          ▼\n     [static_kv_cache]  ──┐\n                          ├──► [static_cache_manager] (Composite)\n     [seq_len_budget]   ──┘\n```\n\n---\n\n## 📝 실습 과제 (Lab Assignment)\n\n1. `max_seq_len` 크기의 Tensor를 사전 할당(`torch.zeros`)하고 디코드 스텝마다 인덱스를 1씩 증가시키며 $K, V$ 슬라이싱 업데이트 구현하기\n2. `seq_len_budget` 초과 시 처리할 예외(Sequence Length Overflow Error) 메커니즘 설계하기",
+    "frontmatter": {
+      "type": "Module",
+      "id": "module.02_basic_kv_cache",
+      "title": "Module 02: Basic KV Cache Engine (기초 KV 캐시 엔진)",
+      "description": "고정된 시퀀스 예산(Sequence Budget)을 기반으로 정적 메모리를 할당하여 KV 캐시를 효율적으로 관리하는 기초 캐시 엔진 모듈",
+      "status": "draft",
+      "generated": {
+        "by": "agent:builder/1.0",
+        "at": "2026-08-05T13:22:00+00:00"
+      },
+      "verified": [
+        {
+          "by": "human:curator",
+          "at": "2026-08-05T13:22:00+00:00"
+        }
+      ]
+    },
+    "links": [
+      [
+        "static_kv_cache",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/static_kv_cache.md"
+      ],
+      [
+        "seq_len_budget",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/seq_len_budget.md"
+      ],
+      [
+        "static_cache_manager",
+        "file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/static_cache_manager.md"
+      ]
+    ]
+  },
+  {
+    "id": "03_modules/shceduler - PagedAttention",
+    "title": "shceduler - PagedAttention",
+    "type": "Document",
+    "path": "03_modules/shceduler - PagedAttention.md",
+    "group": "module",
+    "body": "## Module 3: Serving Many - Batching & Scheduling\n\n### 🎯 이 모듈의 목표\n\nModule 2까지는 **단일 시퀀스(single sequence)** 의 추론 메커니즘을 이해했다면, Module 3에서는 **수백 개의 동시 요청(concurrent requests)** 을 어떻게 효율적으로 처리할지에 대한 **시스템 아키텍처**로 시야를 확장합니다. 핵심은 **Continuous Batching(연속 배치)** 과 전용 **Scheduler(스케줄러)** 를 통해 개별 요청의 지연 시간을 **전체 시스템의 처리량(throughput)** 으로 전환하는 방법입니다.\n\n---\n\n### 🧱 Lab 3.1: From Static to Continuous Batching\n\n#### 3.1.1 핵심 개념: 배치(Batching)의 중요성\n\nGPU에서 하나의 토큰을 처리하는 것과 수천 개의 토큰을 한 번에 처리하는 것은 **효율성 측면에서 거의 차이가 없습니다**. 즉, GPU는 **한 번에 많은 연산을 몰아줄 때** 최고의 성능을 냅니다. 따라서 **\"어떻게 배치를 구성하느냐\"** 가 시스템 성능의 핵심입니다.\n\n#### 3.1.2 Static Batching (정적 배치) — 전통적 방식의 한계\n\n**Static Batching**은 고정된 요청 집합으로 배치를 구성하고, 해당 배치의 모든 요청이 **현재 단계(phase)를 완전히 마칠 때까지** 처리한 후 다음 배치로 넘어가는 방식입니다.\n\n> **비유하자면**: 식당에서 10명이 같이 와서 각자 다른 요리를 주문했는데, **모든 요리가 다 나올 때까지** 다음 손님을 받지 않는 것과 같습니다. 한 손님의 요리가 늦어지면 다른 9명도 함께 기다려야 합니다.\n\n**문제점**:\n- 디코드 단계에서 **하나의 긴 요청**이 전체 배치를 **병목(block)** 시킵니다.\n- GPU는 짧은 요청들이 기다리는 동안 **유휴 상태(idle)** 로 남습니다.\n- 결과적으로 **GPU 활용률이 30~50%** 에 그치고, **긴 꼬리 지연 시간(high tail latency)** 이 발생합니다.\n\n#### 3.1.3 Continuous Batching (연속 배치) — vLLM의 혁신\n\n**Continuous Batching**(Iteration-Level Scheduling이라고도 함)은 **매 스케줄링 반복(iteration)마다 배치를 새롭게 구성**하는 방식입니다.\n\n> **비유하자면**: 식당에서 **요리가 나오는 대로** 손님을 받고, 각 손님의 **다음 요리**가 준비되면 바로 바로 서빙합니다. 한 손님의 요리가 늦어져도 다른 손님들은 계속해서 서비스를 받습니다.\n\n**작동 과정**:\n\n| 단계 | 설명 |\n|---|---|\n| **1. Selection (선택)** | 스케줄러가 **실행 준비가 된**(처리할 토큰이 있는) 요청들을 선택합니다 |\n| **2. Packing (패킹)** | 각 요청의 **다음 계산 단계**를 하나의 배치로 묶습니다 |\n| | • **Prefill 단계**: 새 요청의 전체 프롬프트 처리 |\n| | • **Decode 단계**: 진행 중인 요청의 다음 토큰 1개 처리 |\n| **3. Execution (실행)** | GPU가 이 **혼합(heterogeneous) 배치**를 실행합니다 |\n| **4. Update & Dissolve (갱신 및 해체)** | 결과를 반환하고, 요청 상태를 갱신하며, 배치는 **즉시 해체(dissolve)** 됩니다. 스케줄러는 **바로 다음 배치**를 구성합니다 |\n\n**효과**:\n- GPU가 **지속적으로 포화(saturated)** 상태를 유지합니다.\n- 짧은 요청은 **차단 없이** 완료되고 리소스를 해제합니다.\n- **GPU 활용률 90% 이상** 달성.\n\n#### 3.1.4 다이어그램으로 보는 차이\n\n**Diagram 3.1.a: GPU Utilization Comparison**\n\n```\nStatic Batching (정적 배치):\n[Batch 1 처리] → [Decode A만 실행] → [유휴(idle)] → [Batch 2 처리] → ...\n▉▉▉▉▉▉▉▉▉▉ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ ████████ ░░░░░░░░░░░░░░░░\n          ↑ GPU가 놀고 있음 (30~50% 활용률)\n\nContinuous Batching (연속 배치):\n[Prefill A,B,C] → [Decode A,B,C] → [Decode A,C + Prefill D] → [Decode A,C,D + Prefill E] → ...\n▉▉▉▉▉▉▉▉▉▉ ▉▉▉▉▉ ▉▉▉▉▉▉▉▉▉▉▉ ▉▉▉▉▉▉▉▉▉▉▉▉▉▉ ▉▉▉▉▉▉\n          ↑ GPU가 쉬지 않고 일함 (90%+ 활용률)\n```\n\n**Diagram 3.1.b: Batch Composition Evolution**\n\n```\nIteration 1: [Req A: Prefill] [Req B: Prefill]     ← 모두 프리필\nIteration 2: [Req A: Decode] [Req B: Decode] [Req C: Prefill]  ← 디코드 + 새 프리필 혼합\nIteration 3: [Req A: Decode] [Req C: Decode] [Req D: Prefill]  ← 계속 혼합\n```\n\n---\n\n### ⚙️ Scheduler (스케줄러)의 역할\n\nContinuous Batching을 가능하게 하는 핵심 컴포넌트는 **Scheduler**입니다. Scheduler는 다음을 담당합니다:\n\n1. **대기 큐(Waiting Queue) 관리**: 새로 들어온 요청들을 대기시킵니다.\n2. **우선순위 결정**: Prefill 작업을 Decode 작업보다 **우선 처리**하여 전체 처리량을 최대화합니다. (Prefill은 Compute-Bound, Decode는 Memory-Bound이므로 우선순위 전략이 중요)\n3. **2단계 스케줄링(Two-Phase Scheduling)** 구현:\n   - **Phase 1 (Prefill 우선)**: 대기 큐에서 Prefill 가능한 시퀀스를 우선 스케줄링\n   - **Phase 2 (Decode 처리)**: Prefill이 완료된 후 Decode 단계의 시퀀스들을 배치로 구성\n\n---\n\n## Module 4: PagedAttention - The Logical Abstraction\n\n> 💡 **참고**: HackMD 문서에서 Module 4는 Module 3의 **직접적인 후속 주제**로, \"메모리 관리의 혁신\"을 다룹니다.\n\n### 🎯 이 모듈의 목표\n\nModule 3에서 **\"계산(compute) 효율\"** 을 최적화했다면, Module 4에서는 **\"메모리(memory) 효율\"** 을 최적화합니다. 구체적으로, Module 2에서 확인한 **KV Cache의 메모리 문제**(연속 할당 시 발생하는 **외부 단편화/external fragmentation**)를 해결하는 것이 목표입니다.\n\n### 🧱 PagedAttention의 핵심 개념\n\n#### 문제: 기존 KV Cache 할당 방식의 한계\n\n기존 방식은 각 요청의 KV Cache를 **연속된(contiguous) 메모리 공간**에 할당했습니다. 이 방식은:\n\n- **외부 단편화(External Fragmentation)** 를 심각하게 유발합니다.\n- GPU 메모리가 충분히 남아 있어도 **할당 가능한 연속 공간이 없어** OOM(Out Of Memory) 오류가 발생합니다.\n- 결과적으로 **시스템 처리량이 심각하게 제한**됩니다.\n\n> **비유하자면**: 도서관에서 각 사람이 **연속된 책장**을 통째로 배정받는다고 생각해보세요. 사람들이 책을 다 읽고 나가도, 그 공간이 **조각조각** 나뉘어 있어서 새로 온 사람은 **자신의 책을 모두 꽂을 수 있는 연속된 공간**을 찾기 어렵게 됩니다.\n\n#### 해결책: PagedAttention의 논리적 추상화\n\nPagedAttention은 **운영체제의 가상 메모리 페이징(paging) 개념**을 차용합니다.\n\n**핵심 아이디어**: KV Cache를 **고정 크기 블록(fixed-size blocks)** 단위로 관리합니다.\n\n> **비유하자면**: 이제는 각 사람이 **연속된 책장**이 아니라, **곳곳에 흩어진 책장의 빈 칸(블록)** 을 할당받습니다. 필요한 만큼의 빈 칸을 모아서 사용하고, 반납하면 그 칸은 다시 다른 사람이 사용할 수 있습니다. **메모리 낭비가 거의 없어집니다**.\n\n#### 3가지 핵심 추상화\n\n**1. Logical Block (논리적 블록) vs Physical Block (물리적 블록)** \n\n| 개념 | 설명 |\n|---|---|\n| **Logical Block** | 각 요청이 **논리적으로** 자신의 KV Cache를 구성하는 블록 번호 (연속적, 0, 1, 2, ...) |\n| **Physical Block** | GPU 메모리에 **실제로** 할당된 블록의 물리적 주소 (불연속적, 7, 3, 15, ...) |\n\n**2. Block Table (블록 테이블)** \n\nLogical Block 번호 → Physical Block 번호로 변환해주는 **매핑 테이블**입니다.\n\n```\n요청 A의 Block Table:\nLogical Block 0 → Physical Block 7\nLogical Block 1 → Physical Block 3\nLogical Block 2 → Physical Block 15\nLogical Block 3 → Physical Block 22\n```\n\n**3. Slot Mapping (슬롯 매핑)** \n\n특정 토큰의 KV Cache가 **어느 물리적 블록의 몇 번째 슬롯(slot)** 에 저장되어 있는지 계산합니다.\n\n```\n계산 공식:\n- logical_block = token_position // BLOCK_SIZE  (어느 논리 블록?)\n- physical_block = block_table[logical_block]   (물리 블록은?)\n- slot = token_position % BLOCK_SIZE            (블록 내 몇 번째?)\n```\n\n### 📊 효과: Near-Zero Waste\n\n| 항목 | 기존 방식 (Contiguous) | PagedAttention |\n|---|---|---|\n| **메모리 단편화** | 심각한 외부 단편화 | **거의 제로 (near-zero)**  |\n| **메모리 활용률** | 50~70% | **~100%**  |\n| **OOM 발생** | 빈번 | **거의 없음** |\n| **처리량** | 제한적 | **10~23배 향상**  |\n\n---\n\n## 🔗 Module 3과 Module 4의 연결: 계산 효율 + 메모리 효율 = vLLM의 완성\n\n이 두 모듈은 **vLLM의 양대 산맥**으로, 서로 **불가분의 관계**입니다.\n\n### 1. 문제 정의의 연속성\n\n- **Module 2**에서 \"KV Cache의 메모리 문제\"를 확인했습니다.\n- **Module 3**은 이 문제를 해결하기 전에 **\"계산 워크로드를 어떻게 효율적으로 조직할까?\"** 를 먼저 다루었습니다.\n- **Module 4**는 그 후 **\"메모리 문제를 어떻게 해결할까?\"** 를 다룹니다.\n\n### 2. 상호 의존성 (Interdependence)\n\n| 관점 | 설명 |\n|---|---|\n| **Module 3 → Module 4** | Continuous Batching이 **Prefill과 Decode가 혼합된 배치**를 지속적으로 생성합니다. 이 혼합 배치에서 각 요청의 KV Cache는 **동적으로 증가**합니다. PagedAttention은 이 **동적이고 불규칙한** KV Cache 성장을 **효율적으로 관리**하는 방법을 제공합니다. |\n| **Module 4 → Module 3** | PagedAttention의 **블록 단위 할당**은 Scheduler가 **메모리 용량을 정확히 예측**하고 **배치 크기를 최적화**할 수 있게 합니다. 즉, 메모리 관리가 **스케줄링의 의사 결정**을 더 정교하게 만듭니다. |\n\n### 3. 종합: vLLM의 3대 혁신\n\n```\n┌─────────────────────────────────────────────────────────────────────┐\n│                        vLLM 3대 혁신                              │\n├─────────────────────────────────────────────────────────────────────┤\n│  1. Continuous Batching (Module 3)                                │\n│     → GPU 활용률 30~50% → 90%+                                   │\n│     → \"계산(compute) 효율\"의 혁신                                 │\n├─────────────────────────────────────────────────────────────────────┤\n│  2. Paged KV Cache (Module 4)                                     │\n│     → 메모리 단편화 제거, near-zero waste                         │\n│     → \"메모리(memory) 효율\"의 혁신                                │\n├─────────────────────────────────────────────────────────────────────┤\n│  3. Hybrid Scheduling (두 모듈의 결합)                            │\n│     → Continuous Batching + PagedAttention이 함께 동작            │\n│     → Prefill 우선 + 메모리 인지형 스케줄링          │\n└─────────────────────────────────────────────────────────────────────┘\n```\n\n### 4. 하나의 시스템으로 통합\n\n```\n[요청 유입]\n     │\n     ▼\n┌─────────────────────────────────────────────────────────────────┐\n│  Scheduler (Module 3)                                           │\n│  - 대기 큐에서 Prefill 요청 우선 선택               │\n│  - Block Manager(Module 4)에 메모리 할당 요청           │\n└─────────────────────────────────────────────────────────────────┘\n     │\n     ▼\n┌─────────────────────────────────────────────────────────────────┐\n│  Block Manager (Module 4)                                       │\n│  - PagedAttention으로 KV Cache를 블록 단위로 할당   │\n│  - Block Table로 논리→물리 주소 매핑                     │\n│  - Slot Mapping으로 정확한 메모리 위치 계산            │\n└─────────────────────────────────────────────────────────────────┘\n     │\n     ▼\n┌─────────────────────────────────────────────────────────────────┐\n│  GPU Execution (두 모듈의 협업)                                 │\n│  - Continuous Batching으로 혼합 배치 실행         │\n│  - PagedAttention 커널로 불연속 메모리 접근         │\n└─────────────────────────────────────────────────────────────────┘\n```\n\n---\n\n## 📝 요약: Brick-by-Brick 관점\n\n| 단계 | 학습한 개념 | 다음 개념으로의 연결 |\n|---|---|---|\n| **Module 1** | Autoregressive Loop + KV Cache | KV Cache가 메모리 병목임을 인지 |\n| **Module 2** | KV Cache 메모리 문제 (단편화) | 메모리 문제 해결의 필요성 확인 |\n| **Module 3** | Continuous Batching + Scheduler | 계산 효율 최적화, **동적 KV Cache 성장** 발생 |\n| **Module 4** | PagedAttention (논리적 추상화) | **동적 KV Cache를 효율적으로 관리**하는 방법 제시 |\n| **Module 5+** | 전체 시스템 통합 | Module 3 + 4가 결합된 vLLM 아키텍처 완성 |\n\n> 💡 **핵심 인사이트**: Module 3는 **\"GPU를 어떻게 쉬지 않게 할까?\"** (계산 효율), Module 4는 **\"GPU 메모리를 어떻게 낭비 없이 쓸까?\"** (메모리 효율)라는 **상호 보완적인 질문**에 답합니다. 이 두 가지가 함께 작동할 때 vLLM은 **10~23배의 처리량 향상**을 달성할 수 있습니다.",
+    "frontmatter": {},
+    "links": []
+  }
+];
+        const allEdges = [];
+
+        const groupColors = {
+            atomic: '#38bdf8',
+            composite: '#a855f7',
+            module: '#22c55e',
+            meta: '#eab308',
+            other: '#64748b'
+        };
+
+        let selectedGroups = new Set(['atomic', 'composite', 'module', 'meta', 'other']);
+
+        const nodeListEl = document.getElementById('node-list');
+        const graphContainer = document.getElementById('graph-view');
+        const markdownContainer = document.getElementById('markdown-container');
+        const resizer = document.getElementById('resizer');
+        const contentView = document.getElementById('content-view');
+        const mainContainer = document.getElementById('main-container');
+
+        let network = null;
+
+        // ---------- 드래그 리사이즈 로직 ----------
+        let isResizing = false;
+        let startY = 0;
+        let startGraphHeight = 0;
+
+        resizer.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            startY = e.clientY;
+            startGraphHeight = graphContainer.offsetHeight;
+            document.body.style.cursor = 'row-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            const delta = e.clientY - startY;
+            // delta가 양수면 그래프 영역을 줄임 (내림), 음수면 늘림 (올림)
+            let newGraphHeight = startGraphHeight + delta;
+            // 최소/최대 높이 제한 (전체 높이의 10% ~ 90%)
+            const containerHeight = mainContainer.offsetHeight;
+            const minH = containerHeight * 0.1;
+            const maxH = containerHeight * 0.9;
+            if (newGraphHeight < minH) newGraphHeight = minH;
+            if (newGraphHeight > maxH) newGraphHeight = maxH;
+            graphContainer.style.height = newGraphHeight + 'px';
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                // 그래프 크기 변경 후 네트워크 재조정 (필요시)
+                if (network) {
+                    network.redraw();
+                }
+            }
+        });
+
+        // 더블클릭하면 기본 비율(45%)로 복원
+        resizer.addEventListener('dblclick', function() {
+            const containerHeight = mainContainer.offsetHeight;
+            const defaultHeight = containerHeight * 0.45;
+            graphContainer.style.height = defaultHeight + 'px';
+            if (network) {
+                network.redraw();
+            }
+        });
+
+        // ---------- 그래프 및 사이드바 렌더링 ----------
+        function buildGraphData(groups) {
+            const filteredNodes = allNodes.filter(n => groups.has(n.group));
+            const nodeIds = new Set(filteredNodes.map(n => n.id));
+            const filteredEdges = allEdges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+            return { nodes: filteredNodes, edges: filteredEdges };
+        }
+
+        function renderGraph(groups) {
+            const { nodes, edges } = buildGraphData(groups);
+            const visNodes = new vis.DataSet(nodes.map(n => ({
+                id: n.id,
+                label: n.title,
+                color: { background: groupColors[n.group] || '#64748b', border: '#ffffff' },
+                font: { color: '#ffffff' }
+            })));
+            const visEdges = new vis.DataSet(edges.map((e, idx) => ({
+                id: idx,
+                from: e.source,
+                to: e.target,
+                arrows: 'to',
+                color: { color: '#475569' }
+            })));
+            const data = { nodes: visNodes, edges: visEdges };
+            if (network === null) {
+                network = new vis.Network(graphContainer, data, {
+                    nodes: { shape: 'dot', size: 16, font: { size: 14 } },
+                    physics: { stabilization: false, barnesHut: { gravitationalConstant: -3000, springLength: 95 } }
+                });
+                network.on('click', function(params) {
+                    if (params.nodes.length) selectNode(params.nodes[0]);
+                });
+            } else {
+                network.setData(data);
+                network.redraw();
+            }
+        }
+
+        function renderSidebar(groups) {
+            const filtered = allNodes.filter(n => groups.has(n.group));
+            nodeListEl.innerHTML = '';
+            filtered.forEach(node => {
+                const item = document.createElement('div');
+                item.className = 'node-item';
+                item.id = 'sidebar-' + node.id;
+                item.innerHTML = `<span>${node.title}</span><span class="badge badge-${node.group}">${node.group}</span>`;
+                item.onclick = () => selectNode(node.id);
+                nodeListEl.appendChild(item);
+            });
+        }
+
+        function applyFilters() {
+            renderGraph(selectedGroups);
+            renderSidebar(selectedGroups);
+            // 현재 선택된 노드가 필터에 없으면 초기화
+            const active = document.querySelector('.node-item.active');
+            if (active) {
+                const id = active.id.replace('sidebar-', '');
+                const node = allNodes.find(n => n.id === id);
+                if (!node || !selectedGroups.has(node.group)) {
+                    document.querySelectorAll('.node-item').forEach(el => el.classList.remove('active'));
+                    markdownContainer.innerHTML = `<h1>노드를 선택해 주세요</h1><p>좌측 목록 또는 그래프에서 노드를 클릭하면 내용이 표시됩니다.</p>`;
+                }
+            }
+        }
+
+        // 필터 버튼 이벤트 (단일 선택)
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const group = this.dataset.group;
+                if (group === 'all') {
+                    selectedGroups = new Set(['atomic', 'composite', 'module', 'meta', 'other']);
+                    document.querySelectorAll('.filter-btn:not(.all)').forEach(b => b.classList.add('active'));
+                    this.classList.add('active');
+                } else {
+                    selectedGroups = new Set([group]);
+                    document.querySelectorAll('.filter-btn:not(.all)').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    document.querySelector('.filter-btn.all').classList.remove('active');
+                }
+                applyFilters();
+            });
+        });
+
+        // 노드 선택 함수
+        function selectNode(nodeId) {
+            const node = allNodes.find(n => n.id === nodeId);
+            if (!node) return;
+            if (!selectedGroups.has(node.group)) {
+                return;
+            }
+            document.querySelectorAll('.node-item').forEach(el => el.classList.remove('active'));
+            const active = document.getElementById('sidebar-' + nodeId);
+            if (active) active.classList.add('active');
+
+            const parsed = marked.parse(node.body);
+            markdownContainer.innerHTML = `
+                <div class="meta-tags">
+                    <span class="meta-tag">ID: ${node.id}</span>
+                    <span class="meta-tag">Type: ${node.type}</span>
+                    <span class="meta-tag">Path: ${node.path}</span>
+                </div>
+                ${parsed}
+            `;
+            hljs.highlightAll();
+
+            markdownContainer.querySelectorAll('a').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && (href.includes('.okf/') || href.includes('.md'))) {
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        const target = allNodes.find(n => href.includes(n.path) || href.includes(n.id));
+                        if (target) {
+                            selectNode(target.id);
+                            if (network) {
+                                network.selectNodes([target.id]);
+                            }
+                        }
+                    };
+                }
+            });
+        }
+
+        // 초기 렌더링
+        applyFilters();
+        // 기본 선택
+        const defaultNode = allNodes.find(n => n.id.includes('index') || n.group === 'meta') || allNodes[0];
+        if (defaultNode) selectNode(defaultNode.id);
+
+        // 윈도우 리사이즈 시 그래프 높이 조정 (기본 비율 유지)
+        window.addEventListener('resize', function() {
+            // 사용자가 드래그로 높이를 변경했다면 그대로 두기 위해, 변경된 높이가 없으면 기본 비율로 재조정하지 않음.
+            // 그냥 네트워크 redraw만 수행
+            if (network) network.redraw();
+        });
+    </script>
+</body>
+</html>
