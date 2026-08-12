@@ -2,8 +2,7 @@
 type: AtomicConcept
 id: atomic.cache_hit_detection
 title: Cache Hit Detection (캐시 히트 탐지)
-description: 프리픽스 캐시에서 저장된 프리픽스와 현재 요청 프리픽스를 비교해 히트·미스를 판단하고, 필요한 경우
-캐시를 업데이트한다.
+description: "프리픽스 캐시에서 저장된 프리픽스와 현재 요청 프리픽스를 비교해 히트·미스를 판단하고, 필요한 경우 캐시를 업데이트한다."
 status: draft
 generated:
   by: agent:builder/1.0

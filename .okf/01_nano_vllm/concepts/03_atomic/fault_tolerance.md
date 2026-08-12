@@ -2,8 +2,7 @@
 type: AtomicConcept
 id: atomic.fault_tolerance
 title: Fault Tolerance (장애 내성)
-description: 분산 KV 및 서비스 인프라에서 노드·네트워크 장애 발생 시 자동 복구·재배치를 제공하여 서비스 가용성을
-유지한다.
+description: "분산 KV 및 서비스 인프라에서 노드·네트워크 장애 발생 시 자동 복구·재배치를 제공하여 서비스 가용성을 유지한다."
 status: draft
 generated:
   by: agent:builder/1.0

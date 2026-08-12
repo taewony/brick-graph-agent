@@ -742,7 +742,6 @@ def bootstrap_ci(baseline, post, n_resamples=10000):
 
 - **공식 스펙**: [OKF v0.2 SPEC.md](https://github.com/scaccogatto/okf-skills/blob/main/skills/okf/reference/SPEC.md)
 - **예제 번들**: [examples/sample-bundle/](https://github.com/scaccogatto/okf-skills/tree/main/examples/sample-bundle)
-- **마이그레이션 가이드**: v0.1 → v0.2 마이그레이션은 `--migrate` 플래그 사용
 
 ### 필수 필드
 
@@ -776,34 +775,6 @@ sources:
 
 ---
 
-## 🔄 CI/CD 연동 (GitHub Actions)
-
-```yaml
-# .github/workflows/validate.yml
-name: Validate OKF Bundle
-
-on:
-  push:
-    paths: ['.okf/**']
-  pull_request:
-    paths: ['.okf/**']
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Validate OKF Bundle
-        uses: scaccogatto/okf-skills@v1
-        with:
-          bundle: .okf
-          strict: "true"
-          max-warnings: 5
-```
-
----
-
 ## 🤝 기여 가이드
 
 ### 개발자 역할: 큐레이터(Curator)
@@ -814,13 +785,6 @@ jobs:
 2. **에이전트 제안 검토 및 승인**: 에이전트가 제안한 개선안을 검토하고 승인/거부
 3. **지식 그래프 품질 관리**: OKF KB의 정확성, 완전성, 일관성 유지
 4. **학습 경로(curriculum) 설계**: 어떤 순서로 개념을 학습할지 정의
-
-### 브랜치 전략
-
-- `main`: 안정화된 릴리스 브랜치
-- `develop`: 개발 브랜치 (통합 테스트)
-- `feature/*`: 개별 기능 개발 브랜치
-- `experiment/*`: 논문 실험용 브랜치
 
 ---
 

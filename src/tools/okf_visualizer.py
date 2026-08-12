@@ -1,9 +1,15 @@
 import os
 import re
 import json
+import sys
 import yaml
 from pathlib import Path
 from datetime import datetime
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 
 def sanitize(obj):
     if isinstance(obj, dict):
@@ -40,14 +46,14 @@ def parse_okf_file(file_path, base_dir):
             node_id = node_id[:-3]
 
     group = 'other'
-    path_str = str(rel_path)
-    if '01_atomic_concepts' in path_str:
+    path_str = str(rel_path).replace('\\', '/')
+    if '01_atomic_concepts' in path_str or '/03_atomic/' in path_str or 'atomic' in path_str.lower():
         group = 'atomic'
-    elif '02_composite_concepts' in path_str:
+    elif '02_composite_concepts' in path_str or '/02_composite/' in path_str or 'composite' in path_str.lower():
         group = 'composite'
-    elif '03_modules' in path_str:
+    elif '03_modules' in path_str or '/01_module/' in path_str or 'module' in path_str.lower():
         group = 'module'
-    elif '00_meta' in path_str:
+    elif '00_meta' in path_str or '/meta/' in path_str:
         group = 'meta'
 
     return {
@@ -550,7 +556,18 @@ def generate_dashboard_html(nodes_json, edges_json):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="OKF KB Visualizer & HTML Dashboard Generator with Filtering")
-    parser.add_argument("okf_dir", help="Path to .okf directory or subdirectory (e.g., .okf/00_nano_vllm)")
-    parser.add_argument("-o", "--output", default="dist/index.html", help="Output HTML file path")
+    parser.add_argument("okf_dir", nargs="?", default="D:/code/brick-graph-agent/.okf", help="Path to .okf directory or subdirectory (e.g., .okf/01_nano_vllm)")
+    parser.add_argument("-o", "--output", default=None, help="Output HTML file path (default: docs/<bundle_name>/index.html or docs/index.html)")
     args = parser.parse_args()
-    build_okf_visualizer(Path(args.okf_dir), Path(args.output))
+
+    okf_path = Path(args.okf_dir).resolve()
+
+    if args.output:
+        out_path = Path(args.output)
+    else:
+        if okf_path.name in (".okf", "okf"):
+            out_path = Path("docs/index.html")
+        else:
+            out_path = Path(f"docs/{okf_path.name}/index.html")
+
+    build_okf_visualizer(okf_path, out_path)

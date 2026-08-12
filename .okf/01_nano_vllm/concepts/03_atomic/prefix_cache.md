@@ -2,8 +2,7 @@
 type: AtomicConcept
 id: atomic.prefix_cache
 title: Prefix Cache (프리픽스 캐시)
-description: 요청 시 앞부분(프리픽스) 토큰을 미리 캐시해 재사용함으로써, 프리패딩 단계에서 반복 계산을 방지하고
-레이턴시를 크게 감소시킨다.
+description: "요청 시 앞부분(프리픽스) 토큰을 미리 캐시해 재사용함으로써, 프리패딩 단계에서 반복 계산을 방지하고 레이턴시를 크게 감소시킨다."
 status: draft
 generated:
   by: agent:builder/1.0

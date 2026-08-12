@@ -2,7 +2,7 @@
 type: AtomicConcept
 id: atomic.paged_kv_cache
 title: Paged KV Cache (페이지드 KV 캐시)
-description: KV Cache를 연속된 하나의 큰 텐서가 아닌, 고정 크기(예: 16 tokens)의 블록(Block) 단위로 GPU 메모리에 분산 저장하여 외부 단편화(External Fragmentation)를 완전히 제거하고, 메모리 활용률을 50~70%에서 ~100%로 끌어올리는 PagedAttention의 물리적 저장소 구조
+description: "KV Cache를 연속된 하나의 큰 텐서가 아닌, 고정 크기(예: 16 tokens)의 블록(Block) 단위로 GPU 메모리에 분산 저장하여 외부 단편화를 완전히 제거하고, 메모리 활용률을 끌어올리는 PagedAttention의 물리적 저장소 구조"
 status: draft
 generated:
   by: agent:builder/1.0
@@ -138,3 +138,4 @@ Paged KV Cache는 **Module 02 (Static KV Cache)의 한계를 인지**하고, **M
 ```
 
 > 💡 **핵심 인사이트**: Paged KV Cache는 vLLM의 가장 혁신적인 아이디어인 PagedAttention을 가능하게 하는 **물리적 데이터 구조**입니다. 연속 할당의 단점을 극복하고, 메모리 단편화를 완전히 제거함으로써 vLLM이 10~23배의 처리량 향상을 달성할 수 있게 합니다.
+```

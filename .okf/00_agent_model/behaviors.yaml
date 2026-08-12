@@ -1,0 +1,877 @@
+version: 1.10.0
+compiler: OKFCompiler/2.0
+compiled_at: '2026-08-12T17:15:00Z'
+summary:
+  total_nodes: 83
+  total_bundles: 4
+  history_operators_applied: 3
+  active_behaviors_count: 23
+history_applied:
+- id: op_001
+  timestamp: '2026-08-06T07:45:00Z'
+  op: SPLIT
+  target: composite.memory_management_system
+  new_nodes:
+  - atomic.memory_pool
+  - atomic.block_allocator
+  - atomic.swap_manager
+  - atomic.block_manager
+  deprecate_target: false
+  reason: Decompose memory management into fine-grained atomic and composite memory
+    components.
+- id: op_002
+  timestamp: '2026-08-06T08:07:00Z'
+  op: SPLIT
+  target: composite.prefix_caching_system
+  new_nodes:
+  - atomic.prefix_cache
+  - atomic.cache_hit_detection
+  - atomic.caching_strategy
+  deprecate_target: false
+  reason: Extract prefix cache components into dedicated atomic concepts.
+- id: op_003
+  timestamp: '2026-08-06T08:11:00Z'
+  op: SPLIT
+  target: composite.distributed_serving_system
+  new_nodes:
+  - atomic.distributed_kv
+  - atomic.load_balancer
+  - atomic.fault_tolerance
+  - atomic.distributed_serving
+  deprecate_target: false
+  reason: Modularize distributed serving layer into fault tolerance, load balancing,
+    and distributed KV store.
+behaviors:
+- behavior_id: behavior.00_agent_model/index
+  target_node: 00_agent_model/index
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''00_agent_model/index''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_00_agent_model/index_assembled
+- behavior_id: behavior.brick_01_injest
+  target_node: brick_01_injest
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''brick_01_injest''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_brick_01_injest_assembled
+- behavior_id: behavior.brick_02_compiler
+  target_node: brick_02_compiler
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''brick_02_compiler''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_brick_02_compiler_assembled
+- behavior_id: behavior.brick_03_ask
+  target_node: brick_03_ask
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''brick_03_ask''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_brick_03_ask_assembled
+- behavior_id: behavior.brick_04_browse
+  target_node: brick_04_browse
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''brick_04_browse''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_brick_04_browse_assembled
+- behavior_id: behavior.module_00_foundational
+  target_node: module.00_foundational
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.00_foundational''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_00_foundational_assembled
+- behavior_id: behavior.module_01_autoregressive
+  target_node: module.01_autoregressive
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.01_autoregressive''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_01_autoregressive_assembled
+- behavior_id: behavior.module_02_basic_kv_cache
+  target_node: module.02_basic_kv_cache
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.02_basic_kv_cache''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_02_basic_kv_cache_assembled
+- behavior_id: behavior.module_continuous_batching
+  target_node: module.continuous_batching
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.continuous_batching''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_continuous_batching_assembled
+- behavior_id: behavior.module_paged_attention
+  target_node: module.paged_attention
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.paged_attention''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_paged_attention_assembled
+- behavior_id: behavior.module_memory_management
+  target_node: module.memory_management
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.memory_management''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_memory_management_assembled
+- behavior_id: behavior.module_prefix_caching
+  target_node: module.prefix_caching
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.prefix_caching''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_prefix_caching_assembled
+- behavior_id: behavior.module_distributed_serving
+  target_node: module.distributed_serving
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''module.distributed_serving''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_module_distributed_serving_assembled
+- behavior_id: behavior.composite_autoregressive_loop
+  target_node: composite.autoregressive_loop
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.autoregressive_loop''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_autoregressive_loop_assembled
+- behavior_id: behavior.composite_block_manager
+  target_node: composite.block_manager
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.block_manager''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_block_manager_assembled
+- behavior_id: behavior.composite_prefix_cache_manager
+  target_node: composite.prefix_cache_manager
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.prefix_cache_manager''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_prefix_cache_manager_assembled
+- behavior_id: behavior.composite_decoder_layer
+  target_node: composite.decoder_layer
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.decoder_layer''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_decoder_layer_assembled
+- behavior_id: behavior.composite_distributed_serving
+  target_node: composite.distributed_serving
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.distributed_serving''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_distributed_serving_assembled
+- behavior_id: behavior.composite_dynamic_batcher
+  target_node: composite.dynamic_batcher
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.dynamic_batcher''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_dynamic_batcher_assembled
+- behavior_id: behavior.composite_inference_model
+  target_node: composite.inference_model
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.inference_model''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_inference_model_assembled
+- behavior_id: behavior.composite_paged_attention_manager
+  target_node: composite.paged_attention_manager
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.paged_attention_manager''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_paged_attention_manager_assembled
+- behavior_id: behavior.composite_serving_system
+  target_node: composite.serving_system
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.serving_system''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_serving_system_assembled
+- behavior_id: behavior.composite_static_cache_manager
+  target_node: composite.static_cache_manager
+  trigger_event: COMPOSITE_ASSEMBLED
+  cypher_pattern: 'MATCH (c:Concept {id: ''composite.static_cache_manager''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_composite_static_cache_manager_assembled
+graph_nodes_by_bundle:
+  root:
+  - id: index
+    title: index
+    type: Concept
+    status: draft
+    path: index.md
+    prerequisites: []
+    composed_of: []
+  - id: log
+    title: log
+    type: Concept
+    status: draft
+    path: log.md
+    prerequisites: []
+    composed_of: []
+  00_agent_model:
+  - id: 00_agent_model/index
+    title: Brick-by-Brick OKF Agent Architecture with ActiveGraph
+    type: index
+    status: proposed
+    path: 00_agent_model/index.md
+    prerequisites: []
+    composed_of: []
+  - id: brick_01_injest
+    title: 'Brick 01: Event-Driven Injestor'
+    type: concept
+    status: draft
+    path: 00_agent_model/concepts/brick_01_injest.md
+    prerequisites: []
+    composed_of: []
+  - id: brick_02_compiler
+    title: 'Brick 02: Dynamic Graph Compiler'
+    type: concept
+    status: draft
+    path: 00_agent_model/concepts/brick_02_compiler.md
+    prerequisites: []
+    composed_of: []
+  - id: brick_03_ask
+    title: 'Brick 03: Context-Aware Ask Engine'
+    type: concept
+    status: draft
+    path: 00_agent_model/concepts/brick_03_ask.md
+    prerequisites: []
+    composed_of: []
+  - id: brick_04_browse
+    title: 'Brick 04: Real-time Live Browser'
+    type: concept
+    status: draft
+    path: 00_agent_model/concepts/brick_04_browse.md
+    prerequisites: []
+    composed_of: []
+  01_nano_vllm:
+  - id: index.nano_vllm
+    title: nano-vLLM OKF 지식 베이스 메인 인덱스
+    type: Index
+    status: draft
+    path: 01_nano_vllm/index.md
+    prerequisites: []
+    composed_of: []
+  - id: 01_nano_vllm/log
+    title: log
+    type: Concept
+    status: draft
+    path: 01_nano_vllm/log.md
+    prerequisites: []
+    composed_of: []
+  - id: nano-vllm-from-scratch
+    title: nano-vllm-from-scratch
+    type: Concept
+    status: draft
+    path: 01_nano_vllm/nano-vllm-from-scratch.md
+    prerequisites: []
+    composed_of: []
+  - id: nano-vllm-limitation
+    title: nano-vllm-limitation
+    type: Concept
+    status: draft
+    path: 01_nano_vllm/nano-vllm-limitation.md
+    prerequisites: []
+    composed_of: []
+  - id: nano-vllm-plan
+    title: nano-vllm-plan
+    type: Concept
+    status: draft
+    path: 01_nano_vllm/nano-vllm-plan.md
+    prerequisites: []
+    composed_of: []
+  - id: Scheduler - PagedAttention
+    title: Scheduler - PagedAttention
+    type: Concept
+    status: draft
+    path: 01_nano_vllm/Scheduler - PagedAttention.md
+    prerequisites: []
+    composed_of: []
+  - id: meta.glossary
+    title: nano-vLLM 핵심 용어 사전 (Glossary)
+    type: Document
+    status: draft
+    path: 01_nano_vllm/meta/glossary.md
+    prerequisites: []
+    composed_of: []
+  - id: meta.learning_path
+    title: nano-vLLM 7개 모듈 전체 학습 경로 (Learning Path)
+    type: Document
+    status: draft
+    path: 01_nano_vllm/meta/learning_path.md
+    prerequisites: []
+    composed_of: []
+  - id: module.00_foundational
+    title: 'Module 00: Foundational Concepts (기초 개념)'
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_00_foundational.md
+    prerequisites: []
+    composed_of: []
+  - id: module.01_autoregressive
+    title: 'Module 01: Autoregressive Generation (자기회귀 생성)'
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_01_autoregressive.md
+    prerequisites: []
+    composed_of: []
+  - id: module.02_basic_kv_cache
+    title: 'Module 02: Basic KV Cache Engine (기초 KV 캐시 엔진)'
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_02_basic_kv_cache.md
+    prerequisites: []
+    composed_of: []
+  - id: module.continuous_batching
+    title: Continuous Batching (연속 배치)
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_03_continuous_batching.md
+    prerequisites: []
+    composed_of: []
+  - id: module.paged_attention
+    title: PagedAttention — The Logical Abstraction (페이지드 어텐션)
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_04_paged_attention.md
+    prerequisites:
+    - atomic.kv_cache
+    - atomic.paged_kv_cache
+    - module.continuous_batching
+    composed_of: []
+  - id: module.memory_management
+    title: Memory Management & Block Manager (메모리 관리 및 블록 관리자)
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_05_memory_management.md
+    prerequisites:
+    - atomic.paged_kv_cache
+    - module.paged_attention
+    composed_of: []
+  - id: module.prefix_caching
+    title: Advanced Prefix Caching (고급 프리픽스 캐싱)
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_06_prefix_caching.md
+    prerequisites:
+    - atomic.paged_kv_cache
+    - composite.block_manager
+    - module.memory_management
+    composed_of: []
+  - id: module.distributed_serving
+    title: Distributed Serving (분산 서빙)
+    type: Module
+    status: draft
+    path: 01_nano_vllm/concepts/01_module/module_07_distributed_serving.md
+    prerequisites:
+    - composite.block_manager
+    - composite.paged_attention_manager
+    - module.prefix_caching
+    composed_of: []
+  - id: composite.autoregressive_loop
+    title: Autoregressive Generation Loop (자기회귀 생성 루프)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/autoregressive_loop.md
+    prerequisites: []
+    composed_of: []
+  - id: composite.block_manager
+    title: Physical Block Manager (물리적 블록 관리자)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/block_manager.md
+    prerequisites:
+    - atomic.memory_pool
+    - atomic.paged_kv_cache
+    - composite.paged_attention_manager (Module 4)
+    composed_of: []
+  - id: composite.prefix_cache_manager
+    title: Prefix Caching Strategy & Manager (프리픽스 캐싱 전략 및 관리자)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/caching_strategy.md
+    prerequisites:
+    - composite.block_manager
+    - module.memory_management
+    composed_of: []
+  - id: composite.decoder_layer
+    title: Transformer Decoder Layer (트랜스포머 디코더 레이어)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/decoder_layer.md
+    prerequisites: []
+    composed_of: []
+  - id: composite.distributed_serving
+    title: Distributed Serving System (분산 서빙 시스템)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/distributed_serving_system.md
+    prerequisites:
+    - composite.block_manager
+    - composite.paged_attention_manager
+    - module.prefix_caching
+    composed_of: []
+  - id: composite.dynamic_batcher
+    title: Dynamic Batcher (동적 배치 엔진)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/dynamic_batcher.md
+    prerequisites:
+    - composite.autoregressive_loop (Module 01)
+    - composite.static_cache_manager (Module 02)
+    composed_of: []
+  - id: composite.inference_model
+    title: Inference Model Pipeline (추론 파이프라인)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/inference_model.md
+    prerequisites: []
+    composed_of: []
+  - id: composite.paged_attention_manager
+    title: PagedAttention Manager (페이지드 어텐션 관리자)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/paged_attention_manager.md
+    prerequisites:
+    - atomic.block_table
+    - atomic.paged_kv_cache
+    - atomic.slot_mapping
+    composed_of:
+    - atomic.block_table
+    - atomic.paged_kv_cache
+    - atomic.slot_mapping
+  - id: composite.serving_system
+    title: vLLM 통합 서빙 시스템 (Serving System)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/serving_system.md
+    prerequisites:
+    - atomic.kv_cache
+    - module.continuous_batching
+    - module.paged_attention
+    composed_of: []
+  - id: composite.static_cache_manager
+    title: Static Cache Manager (정적 KV 캐시 관리자)
+    type: CompositeConcept
+    status: draft
+    path: 01_nano_vllm/concepts/02_composite/static_cache_manager.md
+    prerequisites:
+    - composite.autoregressive_loop (Module 01)
+    composed_of: []
+  - id: atomic.attention
+    title: Scaled Dot-Product Attention (어텐션 메커니즘)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/attention.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.block_allocator
+    title: Block Allocator (블록 할당기)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/block_allocator.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.block_table
+    title: Block Table (블록 테이블)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/block_table.md
+    prerequisites:
+    - atomic.paged_kv_cache
+    composed_of: []
+  - id: atomic.cache_hit_detection
+    title: Cache Hit Detection (캐시 히트 탐지)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/cache_hit_detection.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.continuous_batching
+    title: Continuous Batching (연속 배치)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/continuous_batching.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.decode_phase
+    title: Decode Phase (디코드 단계)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/decode_phase.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.distributed_kv
+    title: Distributed KV (분산 키‑값 저장소)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/distributed_kv.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.fault_tolerance
+    title: Fault Tolerance (장애 내성)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/fault_tolerance.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.ffn
+    title: Feed-Forward Network (FFN / MLP)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/ffn.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.inference_only
+    title: Inference-Only Workload (추론 전용 워크로드)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/inference_only.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.iteration_level_scheduling
+    title: Iteration Level Scheduling (배치 단계 스케줄링)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/iteration_level_scheduling.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.kv_cache
+    title: Key-Value Cache (KV 캐시)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/kv_cache.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.length_aware_scheduler
+    title: Length Aware Scheduler (길이‑인식 스케줄러)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/length_aware_scheduler.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.load_balancer
+    title: Load Balancer (로드 밸런서)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/load_balancer.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.master_worker
+    title: Master-Worker Execution Pattern (마스터-워커 실행 패턴)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/master_worker.md
+    prerequisites:
+    - atomic.tensor_parallelism
+    composed_of: []
+  - id: atomic.max_batch_size
+    title: Max Batch Size (최대 배치 크기)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/max_batch_size.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.memory_pool
+    title: Memory Pool (메모리 풀)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/memory_pool.md
+    prerequisites:
+    - atomic.paged_kv_cache
+    composed_of: []
+  - id: atomic.nccl_communicator
+    title: NCCL Communicator (NCCL 통신자)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/nccl_communicator.md
+    prerequisites:
+    - atomic.tensor_parallelism
+    composed_of: []
+  - id: atomic.paged_kv_cache
+    title: Paged KV Cache (페이지드 KV 캐시)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/paged_kv_cache.md
+    prerequisites:
+    - atomic.kv_cache
+    composed_of: []
+  - id: atomic.prefill_phase
+    title: Prefill Phase (프리필 단계)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/prefill_phase.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.prefix_cache
+    title: Prefix Cache (프리픽스 캐시)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/prefix_cache.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.sampling
+    title: Token Sampling Strategies (토큰 샘플링 기법)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/sampling.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.seq_len_budget
+    title: Sequence Length Budget (시퀀스 예산 정책)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/seq_len_budget.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.shared_memory_ipc
+    title: Shared Memory IPC (공유 메모리 프로세스 간 통신)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/shared_memory_ipc.md
+    prerequisites:
+    - atomic.master_worker
+    composed_of: []
+  - id: atomic.slot_mapping
+    title: Slot Mapping (슬롯 매핑)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/slot_mapping.md
+    prerequisites:
+    - atomic.block_table
+    - atomic.paged_kv_cache
+    composed_of: []
+  - id: atomic.static_kv_cache
+    title: Static KV Cache (정적 KV 캐시 버퍼)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/static_kv_cache.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.swap_manager
+    title: Swap Manager (스와핑 관리자)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/swap_manager.md
+    prerequisites: []
+    composed_of: []
+  - id: atomic.tensor_parallelism
+    title: Tensor Parallelism (텐서 병렬성)
+    type: AtomicConcept
+    status: draft
+    path: 01_nano_vllm/concepts/03_atomic/tensor_parallelism.md
+    prerequisites:
+    - atomic.inference_only
+    composed_of: []
+  02_store_front:
+  - id: 02_store_front/index
+    title: index
+    type: Concept
+    status: draft
+    path: 02_store_front/index.md
+    prerequisites: []
+    composed_of: []
+  - id: 02_store_front/log
+    title: log
+    type: Concept
+    status: draft
+    path: 02_store_front/log.md
+    prerequisites: []
+    composed_of: []
+  - id: 02_store_front/components/index
+    title: index
+    type: Concept
+    status: draft
+    path: 02_store_front/components/index.md
+    prerequisites: []
+    composed_of: []
+  - id: okf_init
+    title: okf_init.py
+    type: Tool
+    status: stable
+    path: 02_store_front/components/okf_init.md
+    prerequisites: []
+    composed_of: []
+  - id: release-workflow
+    title: release.yml
+    type: Tool
+    status: stable
+    path: 02_store_front/components/release-workflow.md
+    prerequisites: []
+    composed_of: []
+  - id: stop-hook
+    title: okf-stop-check.sh
+    type: Tool
+    status: stable
+    path: 02_store_front/components/stop-hook.md
+    prerequisites: []
+    composed_of: []
+  - id: validator
+    title: okf_validate.py
+    type: Tool
+    status: stable
+    path: 02_store_front/components/validator.md
+    prerequisites: []
+    composed_of: []
+  - id: visualizer
+    title: okf_visualize.py
+    type: Tool
+    status: stable
+    path: 02_store_front/components/visualizer.md
+    prerequisites: []
+    composed_of: []
+  - id: auto-release
+    title: Auto-release on version bump
+    type: Decision
+    status: stable
+    path: 02_store_front/decisions/auto-release.md
+    prerequisites: []
+    composed_of: []
+  - id: dormant-hooks
+    title: Ship a dormant Stop hook — opt-in enforced upkeep
+    type: Decision
+    status: stable
+    path: 02_store_front/decisions/dormant-hooks.md
+    prerequisites: []
+    composed_of: []
+  - id: dual-distribution
+    title: Dual distribution — plugin + skills.sh
+    type: Decision
+    status: stable
+    path: 02_store_front/decisions/dual-distribution.md
+    prerequisites: []
+    composed_of: []
+  - id: 02_store_front/decisions/index
+    title: index
+    type: Concept
+    status: draft
+    path: 02_store_front/decisions/index.md
+    prerequisites: []
+    composed_of: []
+  - id: no-hooks
+    title: Ship no hooks — soft-mode upkeep
+    type: Decision
+    status: deprecated
+    path: 02_store_front/decisions/no-hooks.md
+    prerequisites: []
+    composed_of: []
+  - id: okf-v02-dual-read
+    title: Target OKF v0.2, migrate v0.1 rather than tolerate it
+    type: Decision
+    status: stable
+    path: 02_store_front/decisions/okf-v02-dual-read.md
+    prerequisites: []
+    composed_of: []
+  - id: scale-guardrails
+    title: Scale guardrails in the visualizer
+    type: Decision
+    status: stable
+    path: 02_store_front/decisions/scale-guardrails.md
+    prerequisites: []
+    composed_of: []
+  - id: self-contained-skills
+    title: Self-contained skills via CLAUDE_SKILL_DIR
+    type: Decision
+    status: stable
+    path: 02_store_front/decisions/self-contained-skills.md
+    prerequisites: []
+    composed_of: []
+  - id: 02_store_front/reference/index
+    title: index
+    type: Concept
+    status: draft
+    path: 02_store_front/reference/index.md
+    prerequisites: []
+    composed_of: []
+  - id: okf-spec
+    title: OKF v0.2 specification
+    type: Reference
+    status: stable
+    path: 02_store_front/reference/okf-spec.md
+    prerequisites: []
+    composed_of: []
+  - id: 02_store_front/skills/index
+    title: index
+    type: Concept
+    status: draft
+    path: 02_store_front/skills/index.md
+    prerequisites: []
+    composed_of: []
+  - id: okf
+    title: okf skill
+    type: Skill
+    status: stable
+    path: 02_store_front/skills/okf.md
+    prerequisites: []
+    composed_of: []
+  - id: validate
+    title: validate skill
+    type: Skill
+    status: stable
+    path: 02_store_front/skills/validate.md
+    prerequisites: []
+    composed_of: []
+  - id: visualize
+    title: visualize skill
+    type: Skill
+    status: stable
+    path: 02_store_front/skills/visualize.md
+    prerequisites: []
+    composed_of: []

@@ -1,0 +1,41 @@
+# 00_agent_model/history.yaml
+# OKF Graph Transformation History Operators Log
+# The OKF Compiler ingests this log to apply transformations to the IR before generating behaviors.yaml.
+
+version: 1.0.0
+updated_at: "2026-08-12T17:15:00Z"
+history:
+  - id: op_001
+    timestamp: "2026-08-06T07:45:00Z"
+    op: SPLIT
+    target: composite.memory_management_system
+    new_nodes:
+      - atomic.memory_pool
+      - atomic.block_allocator
+      - atomic.swap_manager
+      - atomic.block_manager
+    deprecate_target: false
+    reason: "Decompose memory management into fine-grained atomic and composite memory components."
+
+  - id: op_002
+    timestamp: "2026-08-06T08:07:00Z"
+    op: SPLIT
+    target: composite.prefix_caching_system
+    new_nodes:
+      - atomic.prefix_cache
+      - atomic.cache_hit_detection
+      - atomic.caching_strategy
+    deprecate_target: false
+    reason: "Extract prefix cache components into dedicated atomic concepts."
+
+  - id: op_003
+    timestamp: "2026-08-06T08:11:00Z"
+    op: SPLIT
+    target: composite.distributed_serving_system
+    new_nodes:
+      - atomic.distributed_kv
+      - atomic.load_balancer
+      - atomic.fault_tolerance
+      - atomic.distributed_serving
+    deprecate_target: false
+    reason: "Modularize distributed serving layer into fault tolerance, load balancing, and distributed KV store."

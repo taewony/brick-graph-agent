@@ -2,8 +2,7 @@
 type: AtomicConcept
 id: atomic.load_balancer
 title: Load Balancer (로드 밸런서)
-description: 요청을 여러 KV 서버 인스턴스에 고르게 분산시켜 처리량을 향상하고, 지연 시간을 최소화하는 프론트엔드
-컴포넌트.
+description: "요청을 여러 KV 서버 인스턴스에 고르게 분산시켜 처리량을 향상하고, 지연 시간을 최소화하는 프론트엔드 컴포넌트."
 status: draft
 generated:
   by: agent:builder/1.0

@@ -2,8 +2,7 @@
 type: AtomicConcept
 id: atomic.block_allocator
 title: Block Allocator (블록 할당기)
-description: 메모리 풀에서 고정‑크기 블록을 효율적으로 할당·해제하는 로직. 연속 배치와 KV 캐시가 요구하는 빠른
-메모리 접근을 지원한다.
+description: "메모리 풀에서 고정‑크기 블록을 효율적으로 할당·해제하는 로직. 연속 배치와 KV 캐시가 요구하는 빠른 메모리 접근을 지원한다."
 status: draft
 generated:
   by: agent:builder/1.0

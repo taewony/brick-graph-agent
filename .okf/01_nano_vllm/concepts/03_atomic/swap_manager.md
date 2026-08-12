@@ -2,8 +2,7 @@
 type: AtomicConcept
 id: atomic.swap_manager
 title: Swap Manager (스와핑 관리자)
-description: 메모리 풀이 포화될 경우, 저우선순위 블록을 디스크(스와프)로 옮겨 실시간 메모리 사용량을 조절하는
-보조 컴포넌트.
+description: "메모리 풀이 포화될 경우, 저우선순위 블록을 디스크(스와프)로 옮겨 실시간 메모리 사용량을 조절하는 보조 컴포넌트."
 status: draft
 generated:
   by: agent:builder/1.0
