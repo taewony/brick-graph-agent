@@ -7,7 +7,7 @@ gate results, `transform.promoted` / `transform.discarded`, `attribute`,
 
 Public surface:
 
-    from regimes.loop import run_loop, MockEval
+    from src.core.loop import run_loop, MockEval
     g = run_loop(eval_backend=MockEval(...), split=split, instances=insts,
                  pause_after="histogram")
     # `g.events` is the audit log; the histogram has been printed.
@@ -32,7 +32,7 @@ score-transform action space can't reach them).
 
 from __future__ import annotations
 
-from regimes.loop.events import (
+from src.core.loop.events import (
     ATTRIBUTION_RECORDED,
     BASELINE_RECORDED,
     LOOP_ITERATE,
@@ -48,15 +48,15 @@ from regimes.loop.events import (
     TRANSFORM_STATIC_PASSED,
     TRANSFORM_STATIC_REJECTED,
 )
-from regimes.loop.mock_eval import MockEval, MockInstance
-from regimes.loop.regimes import (
+from src.core.loop.mock_eval import MockEval, MockInstance
+from src.core.loop.regimes import (
     REGIMES,
     Regime,
     classify,
     histogram,
     is_seam_reachable,
 )
-from regimes.loop.runner import LoopReport, run_loop
+from src.core.loop.runner import LoopReport, run_loop
 
 __all__ = [
     "ATTRIBUTION_RECORDED",

@@ -26,8 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from regimes.eval.types import EvalResult
-from regimes.loop.regimes import classify as _lme_classify
+from src.core.eval.types import EvalResult
+from src.core.loop.regimes import classify as _lme_classify
 
 
 @dataclass(frozen=True)

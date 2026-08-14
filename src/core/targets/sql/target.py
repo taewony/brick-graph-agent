@@ -12,12 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from regimes.target import ActionSpace, EvalBackend, RegimeTaxonomy
-from regimes.targets.sql.action_space import SqlActionSpace
-from regimes.targets.sql.eval import SqlEvalBackend
-from regimes.targets.sql.hypothesize import StubSqlAuthor
-from regimes.targets.sql.outcome import SqlOutcome
-from regimes.targets.sql.taxonomy import SqlTaxonomy
+from src.core.target import ActionSpace, EvalBackend, RegimeTaxonomy
+from src.core.targets.sql.action_space import SqlActionSpace
+from src.core.targets.sql.eval import SqlEvalBackend
+from src.core.targets.sql.hypothesize import StubSqlAuthor
+from src.core.targets.sql.outcome import SqlOutcome
+from src.core.targets.sql.taxonomy import SqlTaxonomy
 
 
 def outcome_summary(o: SqlOutcome) -> dict[str, Any]:

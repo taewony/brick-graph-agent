@@ -6,7 +6,7 @@ pipeline (here: `prompt_transforms` instead of LME's
 `score-transforms`) as the optimization seam.
 
 Public surface:
-    from regimes.targets.sql.agent import retrieve
+    from src.core.targets.sql.agent import retrieve
     trace = retrieve(instance, reader=...)
     trace.predicted_sql
     trace.events
@@ -14,7 +14,7 @@ Public surface:
 
 from __future__ import annotations
 
-from regimes.targets.sql.agent.agent import (
+from src.core.targets.sql.agent.agent import (
     DraftedQuery,
     RetrieveTrace,
     retrieve,

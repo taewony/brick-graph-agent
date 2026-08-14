@@ -9,6 +9,6 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
-from regimes.split import Split, load_split
+from src.core.split import Split, load_split
 
 __all__ = ["Split", "load_split", "__version__"]

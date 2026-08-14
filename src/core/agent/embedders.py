@@ -135,7 +135,7 @@ class HashEmbedder:
         v = [0.0] * self._dim
         # Use the same tokenization as the lexical signal so the two
         # signals see the corpus the same way — keeps comparisons clean.
-        from regimes.agent.tokenize import raw_tokenize
+        from src.core.agent.tokenize import raw_tokenize
         for tok in raw_tokenize(text):
             h_bytes = hashlib.sha256(tok.encode("utf-8")).digest()
             h = int.from_bytes(h_bytes[:8], "big")

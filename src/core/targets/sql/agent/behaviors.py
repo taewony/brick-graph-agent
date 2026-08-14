@@ -25,9 +25,9 @@ from typing import Any
 
 from activegraph import behavior
 
-from regimes.agent.embedders import get_embedder
-from regimes.targets.sql import prompt_transforms
-from regimes.targets.sql.agent import events as E
+from src.core.agent.embedders import get_embedder
+from src.core.targets.sql import prompt_transforms
+from src.core.targets.sql.agent import events as E
 
 
 # ===========================================================================

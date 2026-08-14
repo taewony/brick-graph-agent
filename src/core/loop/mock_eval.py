@@ -28,9 +28,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from regimes.agent import reader_transforms as _reader_transforms
-from regimes.agent import transforms as _transforms
-from regimes.eval.types import EvalResult, Outcome
+from src.core.agent import reader_transforms as _reader_transforms
+from src.core.agent import transforms as _transforms
+from src.core.eval.types import EvalResult, Outcome
 
 
 # ----- Instance spec -------------------------------------------------------

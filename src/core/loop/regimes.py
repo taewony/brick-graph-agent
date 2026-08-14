@@ -43,7 +43,7 @@ import threading
 from dataclasses import dataclass, field, replace
 from typing import Callable
 
-from regimes.eval.types import Outcome
+from src.core.eval.types import Outcome
 
 
 # ----- Threshold knobs -----------------------------------------------------
@@ -427,7 +427,7 @@ def _eligible_transform_types(name: str) -> tuple[str, ...]:
     target package imports back from it, so a module-top import would
     cycle. By the time these flags are read (runtime) both modules are
     fully loaded."""
-    from regimes.targets.longmemeval.transform_types import REGIME_TO_TYPES
+    from src.core.targets.longmemeval.transform_types import REGIME_TO_TYPES
     return tuple(REGIME_TO_TYPES.get(name, ()))
 
 

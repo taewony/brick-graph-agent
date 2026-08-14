@@ -21,14 +21,14 @@ from typing import Any
 
 from activegraph import Event, FrozenClock, Graph, IDGen, Runtime
 
-from regimes.loop import events as E
-from regimes.loop.behaviors import (
+from src.core.loop import events as E
+from src.core.loop.behaviors import (
     LOOP_BEHAVIORS,
     LoopContext,
     clear_context,
     set_context,
 )
-from regimes.target import Target
+from src.core.target import Target
 
 
 @dataclass
@@ -80,7 +80,7 @@ def run_loop(
     if target is None:
         # Local import: avoids a regimes.loop ↔ regimes.targets cycle at
         # module-import time. The targets package re-imports from the loop.
-        from regimes.targets.longmemeval import build_target as _build_lme_target
+        from src.core.targets.longmemeval import build_target as _build_lme_target
         if eval_backend is None:
             raise TypeError(
                 "run_loop requires either target=... or eval_backend=..."

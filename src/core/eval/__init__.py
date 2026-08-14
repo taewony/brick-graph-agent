@@ -12,13 +12,13 @@ milestone 3) will produce the same shape.
 
 from __future__ import annotations
 
-from regimes.eval.types import (
+from src.core.eval.types import (
     Outcome,
     EvalResult,
     Reader,
     Judge,
 )
-from regimes.eval.real import (
+from src.core.eval.real import (
     RealEval,
     FakeReader,
     FakeJudge,

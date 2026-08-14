@@ -3,7 +3,7 @@
 Moved out of `regimes.loop.behaviors._outcome_summary`. The loop now
 calls `target.outcome_summary(o)` and `LongMemEvalTarget.outcome_summary`
 delegates here. A backward-compat re-export in `regimes.loop.behaviors`
-keeps existing imports (`from regimes.loop.behaviors import _outcome_summary`)
+keeps existing imports (`from src.core.loop.behaviors import _outcome_summary`)
 working.
 
 Self-justifying per-question summary for persistence: carries the
@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from regimes.eval.types import Outcome
-from regimes.loop.regimes import WELL_RANKED_K, classify
+from src.core.eval.types import Outcome
+from src.core.loop.regimes import WELL_RANKED_K, classify
 
 
 def outcome_summary(o: Outcome, *, well_ranked_k: int = WELL_RANKED_K) -> dict[str, Any]:

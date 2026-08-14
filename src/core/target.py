@@ -48,7 +48,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Protocol, Sequence, runtime_checkable
 
-from regimes.eval.types import EvalResult
+from src.core.eval.types import EvalResult
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ class DraftedChange:
 # single import the LoopContext / behaviors need.
 # ---------------------------------------------------------------------------
 
-from regimes.loop.gates import (  # noqa: E402  — re-exports kept here on purpose
+from src.core.loop.gates import (  # noqa: E402  — re-exports kept here on purpose
     EvalDiff,
     PromotionDecision,
     SandboxResult,

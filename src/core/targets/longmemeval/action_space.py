@@ -23,14 +23,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
-from regimes.agent import reader_transforms as _reader_transforms
-from regimes.agent import transforms as _agent_transforms
-from regimes.eval.types import EvalResult
-from regimes.loop import gates as _gates
-from regimes.loop.hypothesize import DraftedTransform, StubAuthor
-from regimes.target import DraftedChange, EvalDiff, PromotionDecision, SandboxResult, StaticResult
+from src.core.agent import reader_transforms as _reader_transforms
+from src.core.agent import transforms as _agent_transforms
+from src.core.eval.types import EvalResult
+from src.core.loop import gates as _gates
+from src.core.loop.hypothesize import DraftedTransform, StubAuthor
+from src.core.target import DraftedChange, EvalDiff, PromotionDecision, SandboxResult, StaticResult
 
-from regimes.targets.longmemeval.transform_types import (
+from src.core.targets.longmemeval.transform_types import (
     ALL_TRANSFORM_TYPES,
     ASSEMBLY_TRANSFORM,
     READER_PROMPT_TRANSFORM,

@@ -15,13 +15,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from regimes.eval.types import Outcome
-from regimes.loop.hypothesize import StubAuthor
-from regimes.target import ActionSpace, EvalBackend, RegimeTaxonomy
+from src.core.eval.types import Outcome
+from src.core.loop.hypothesize import StubAuthor
+from src.core.target import ActionSpace, EvalBackend, RegimeTaxonomy
 
-from regimes.targets.longmemeval.action_space import LongMemEvalActionSpace
-from regimes.targets.longmemeval.outcome_summary import outcome_summary
-from regimes.targets.longmemeval.taxonomy import LongMemEvalTaxonomy
+from src.core.targets.longmemeval.action_space import LongMemEvalActionSpace
+from src.core.targets.longmemeval.outcome_summary import outcome_summary
+from src.core.targets.longmemeval.taxonomy import LongMemEvalTaxonomy
 
 
 @dataclass

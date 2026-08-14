@@ -45,8 +45,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
-from regimes.loop.regimes import Regime, HistogramRow
-from regimes.targets.sql.outcome import SqlOutcome
+from src.core.loop.regimes import Regime, HistogramRow
+from src.core.targets.sql.outcome import SqlOutcome
 
 
 # ---------------------------------------------------------------------------

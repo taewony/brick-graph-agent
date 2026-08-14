@@ -23,8 +23,8 @@ import math
 import traceback as _traceback
 from typing import Any, Callable
 
-from regimes.agent.embedders import Embedder, embedding_token_count
-from regimes.agent.tokenize import distinctive_tokens
+from src.core.agent.embedders import Embedder, embedding_token_count
+from src.core.agent.tokenize import distinctive_tokens
 
 
 def _vocab(view: Any) -> dict:

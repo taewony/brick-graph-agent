@@ -32,7 +32,7 @@ from typing import Iterable
 
 from activegraph import ConfigurationError
 
-from regimes.eval.types import Outcome
+from src.core.eval.types import Outcome
 
 
 @dataclass(frozen=True)

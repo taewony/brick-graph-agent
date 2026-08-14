@@ -33,10 +33,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
-from regimes.agent import transforms as _agent_transforms
-from regimes.eval.types import EvalResult
-from regimes.loop.regimes import classify as _lme_classify
-from regimes.loop.regimes import histogram as _lme_histogram
+from src.core.agent import transforms as _agent_transforms
+from src.core.eval.types import EvalResult
+from src.core.loop.regimes import classify as _lme_classify
+from src.core.loop.regimes import histogram as _lme_histogram
 
 
 # ===========================================================================

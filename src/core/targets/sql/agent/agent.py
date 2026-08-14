@@ -21,9 +21,9 @@ from activegraph import Event, FrozenClock, Graph, IDGen, Runtime, get_registry
 
 # Importing this module registers the four sql_agent behaviors as a side
 # effect. We capture the snapshot once at import time.
-from regimes.targets.sql.agent import behaviors as _behaviors_module  # noqa: F401
-from regimes.targets.sql.agent import events as E
-from regimes.targets.sql.agent.behaviors import (
+from src.core.targets.sql.agent import behaviors as _behaviors_module  # noqa: F401
+from src.core.targets.sql.agent import events as E
+from src.core.targets.sql.agent.behaviors import (
     _clear_reader,
     _set_reader,
 )

@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from regimes.eval.types import Outcome
-from regimes.loop.hypothesize import DraftedTransform
-from regimes.targets.longmemeval.transform_types import REGIME_TO_TYPES
+from src.core.eval.types import Outcome
+from src.core.loop.hypothesize import DraftedTransform
+from src.core.targets.longmemeval.transform_types import REGIME_TO_TYPES
 
 
 # ---------------------------------------------------------------------------

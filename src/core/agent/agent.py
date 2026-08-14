@@ -23,9 +23,9 @@ from activegraph import Event, FrozenClock, Graph, IDGen, Runtime
 # Importing this module registers the four agent behaviors into the
 # activegraph global registry as a side effect. We capture the snapshot
 # the first time so `retrieve` can re-register a clean slate per call.
-from regimes.agent import behaviors as _behaviors_module  # noqa: F401
-from regimes.agent import events as E
-from regimes.agent.build import build_corpus
+from src.core.agent import behaviors as _behaviors_module  # noqa: F401
+from src.core.agent import events as E
+from src.core.agent.build import build_corpus
 
 
 # Default LME-matching corpus knobs. Picked to match the reference

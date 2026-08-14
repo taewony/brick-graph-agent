@@ -2,10 +2,10 @@ version: 1.10.0
 compiler: OKFCompiler/2.0
 compiled_at: '2026-08-12T17:15:00Z'
 summary:
-  total_nodes: 83
+  total_nodes: 87
   total_bundles: 4
   history_operators_applied: 3
-  active_behaviors_count: 23
+  active_behaviors_count: 27
 history_applied:
 - id: op_001
   timestamp: '2026-08-06T07:45:00Z'
@@ -87,6 +87,42 @@ behaviors:
 
     RETURN c'
   handler: handle_brick_04_browse_assembled
+- behavior_id: behavior.build-from-scratch_agent_model
+  target_node: build-from-scratch.agent.model
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''build-from-scratch.agent.model''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_build-from-scratch_agent_model_assembled
+- behavior_id: behavior.okf-graph_agent_model
+  target_node: okf-graph.agent.model
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''okf-graph.agent.model''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_okf-graph_agent_model_assembled
+- behavior_id: behavior.super_agent_model
+  target_node: super.agent.model
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''super.agent.model''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_super_agent_model_assembled
+- behavior_id: behavior.text-to-sql_agent_model
+  target_node: text-to-sql.agent.model
+  trigger_event: GRAPH_COMPILED
+  cypher_pattern: 'MATCH (c:Concept {id: ''text-to-sql.agent.model''})
+
+    WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
+
+    RETURN c'
+  handler: handle_text-to-sql_agent_model_assembled
 - behavior_id: behavior.module_00_foundational
   target_node: module.00_foundational
   trigger_event: GRAPH_COMPILED
@@ -299,6 +335,34 @@ graph_nodes_by_bundle:
     type: concept
     status: draft
     path: 00_agent_model/concepts/brick_04_browse.md
+    prerequisites: []
+    composed_of: []
+  - id: build-from-scratch.agent.model
+    title: build-from-scratch.agent.model
+    type: Concept
+    status: draft
+    path: 00_agent_model/examples/build-from-scratch.agent.model.md
+    prerequisites: []
+    composed_of: []
+  - id: okf-graph.agent.model
+    title: okf-graph.agent.model
+    type: Concept
+    status: draft
+    path: 00_agent_model/examples/okf-graph.agent.model.md
+    prerequisites: []
+    composed_of: []
+  - id: super.agent.model
+    title: super.agent.model
+    type: Concept
+    status: draft
+    path: 00_agent_model/examples/super.agent.model.md
+    prerequisites: []
+    composed_of: []
+  - id: text-to-sql.agent.model
+    title: text-to-sql.agent.model
+    type: Concept
+    status: draft
+    path: 00_agent_model/examples/text-to-sql.agent.model.md
     prerequisites: []
     composed_of: []
   01_nano_vllm:

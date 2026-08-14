@@ -35,17 +35,17 @@ from typing import Any
 
 from activegraph import behavior, get_registry
 
-from regimes.eval.types import EvalResult
-from regimes.loop import events as E
-from regimes.loop.attribute import attribute as _attribute
-from regimes.loop.gates import EvalDiff
-from regimes.target import Target
+from src.core.eval.types import EvalResult
+from src.core.loop import events as E
+from src.core.loop.attribute import attribute as _attribute
+from src.core.loop.gates import EvalDiff
+from src.core.target import Target
 
 
 # Backward-compat re-export: tests import `_outcome_summary` from this
 # module (the function moved to regimes.targets.longmemeval). Keeping
 # the symbol importable here avoids breaking external callers.
-from regimes.targets.longmemeval.outcome_summary import outcome_summary as _outcome_summary  # noqa: E402,F401
+from src.core.targets.longmemeval.outcome_summary import outcome_summary as _outcome_summary  # noqa: E402,F401
 
 
 # ===========================================================================

@@ -5,7 +5,7 @@ package directly: real Graph, real @behavior decorations, real Runtime,
 real graph.emit. There is no lookalike engine here.
 
 Public surface:
-    from regimes.agent import retrieve
+    from src.core.agent import retrieve
     trace = retrieve(instance, token_budget=2500)
     trace.context.text       # the assembled context
     trace.events             # full runtime event log for this question
@@ -13,7 +13,7 @@ Public surface:
 
 from __future__ import annotations
 
-from regimes.agent.agent import (
+from src.core.agent.agent import (
     AssembledContext,
     RetrieveTrace,
     DEFAULT_MAX_DOC_FREQ_FRACTION,
@@ -24,7 +24,7 @@ from regimes.agent.agent import (
     ingest,
     retrieve,
 )
-from regimes.agent.embedders import (
+from src.core.agent.embedders import (
     Embedder,
     HashEmbedder,
     OpenAIEmbedder,

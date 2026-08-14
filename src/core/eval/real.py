@@ -38,10 +38,10 @@ from typing import Any, Iterable
 
 from activegraph import ConfigurationError
 
-from regimes.agent import reader_transforms as _reader_transforms
-from regimes.agent import retrieve as agent_retrieve
-from regimes.agent import events as AE
-from regimes.eval.types import EvalResult, Judge, Outcome, Reader
+from src.core.agent import reader_transforms as _reader_transforms
+from src.core.agent import retrieve as agent_retrieve
+from src.core.agent import events as AE
+from src.core.eval.types import EvalResult, Judge, Outcome, Reader
 
 
 REGIMES_RUN_VERSION = "regimes-eval-real-v1"

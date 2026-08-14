@@ -23,12 +23,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from regimes.eval.types import EvalResult
-from regimes.targets.sql import prompt_transforms as _pipeline
-from regimes.targets.sql.agent import retrieve as sql_agent_retrieve
-from regimes.targets.sql.exec import execute_sql, result_sets_equal
-from regimes.targets.sql.outcome import SqlOutcome
-from regimes.targets.sql.sql_parse import parse_sql
+from src.core.eval.types import EvalResult
+from src.core.targets.sql import prompt_transforms as _pipeline
+from src.core.targets.sql.agent import retrieve as sql_agent_retrieve
+from src.core.targets.sql.exec import execute_sql, result_sets_equal
+from src.core.targets.sql.outcome import SqlOutcome
+from src.core.targets.sql.sql_parse import parse_sql
 
 
 @dataclass

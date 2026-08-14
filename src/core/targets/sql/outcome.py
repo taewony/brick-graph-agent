@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from regimes.eval.types import Outcome
+from src.core.eval.types import Outcome
 
 
 @dataclass(frozen=True)

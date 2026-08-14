@@ -23,7 +23,7 @@ from typing import Any
 
 from activegraph import Graph
 
-from regimes.agent.tokenize import count_tokens, distinctive_tokens, render_turn
+from src.core.agent.tokenize import count_tokens, distinctive_tokens, render_turn
 
 INGEST_ACTOR = "ingest"
 

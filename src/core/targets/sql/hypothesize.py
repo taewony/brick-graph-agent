@@ -23,7 +23,7 @@ from typing import Any, Iterable
 
 from activegraph import ConfigurationError
 
-from regimes.target import DraftedChange
+from src.core.target import DraftedChange
 
 
 TRANSFORM_SIGNATURE = (

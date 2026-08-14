@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 
-from regimes.agent.stoplist import STOPLIST
+from src.core.agent.stoplist import STOPLIST
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 

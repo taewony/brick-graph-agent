@@ -20,18 +20,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
-from regimes.eval.types import EvalResult
-from regimes.loop import gates as _gates
-from regimes.target import (
+from src.core.eval.types import EvalResult
+from src.core.loop import gates as _gates
+from src.core.target import (
     DraftedChange,
     EvalDiff,
     PromotionDecision,
     SandboxResult,
     StaticResult,
 )
-from regimes.targets.sql import prompt_transforms as _pipeline
-from regimes.targets.sql.hypothesize import StubSqlAuthor
-from regimes.targets.sql.taxonomy import SqlTaxonomy
+from src.core.targets.sql import prompt_transforms as _pipeline
+from src.core.targets.sql.hypothesize import StubSqlAuthor
+from src.core.targets.sql.taxonomy import SqlTaxonomy
 
 
 SQL_SIGNATURE_PARAMS: tuple[str, ...] = ("prompt_parts", "question", "schema_meta")

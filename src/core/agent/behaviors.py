@@ -26,10 +26,10 @@ from typing import Any
 
 from activegraph import behavior
 
-from regimes.agent import events as E
-from regimes.agent import transforms
-from regimes.agent.embedders import get_embedder
-from regimes.agent.signals import score_embedding, score_lexical
+from src.core.agent import events as E
+from src.core.agent import transforms
+from src.core.agent.embedders import get_embedder
+from src.core.agent.signals import score_embedding, score_lexical
 
 _log = logging.getLogger("regimes.agent.score_embedding")
 

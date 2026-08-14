@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from regimes.loop.regimes import (
+from src.core.loop.regimes import (
     REGIMES,
     HistogramRow,
     Regime,
