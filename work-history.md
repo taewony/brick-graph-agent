@@ -1,5 +1,3 @@
-  요청해주신 OKF 컴파일러 구축, 내장 검증기 통합, 00_agent_model 히스토리 연산 처리, 기존 도구 범용화 작업을 모두
-  성공적으로 완료했습니다.
   ──────
   ## 🛠️ 수행된 작업 요약
 
@@ -48,3 +46,77 @@
 
     # 3. 지식 그래프 HTML 대시보드 빌드
     python src/tools/okf_visualizer.py D:/code/brick-graph-agent/.okf
+    
+ ## Outlining the Agent's Plan
+
+  I'm now formulating the architecture for the query-response agent. I'm focusing on a structured plan for the nano-
+  vLLM bundle, aiming to meet the "show me the plan first" request. The core capabilities involve knowledge retrieval
+  from OKF files and local LLM integration using Ollama. My current outline includes handling the user's queries against
+  the OKF graph and leveraging the local Ollama API. I'm prioritizing concise, markdown-formatted responses.
+
+# 🚀 Updated Plan: ActiveGraph-based nano-vLLM Query Agent (Ollama qwen3:8b)
+
+> **Goal**: Build an **ActiveGraph Runtime-Driven Agent** for the `nano-vllm` OKF Knowledge Base, using **Ollama (`qwen3:8b`)**, event-driven state transitions (`QUERY_REQUESTED`), compiled prompt templates in `behaviors.yaml`, and automatic runtime logging to `history.yaml`.
+
+---
+
+## 🎯 Revised Architecture Blueprint
+
+```mermaid
+graph TD
+    UserQuery["User Input / Query"]
+    AgentWrapper["Agent Wrapper<br>(src/agents/nano_vllm_agent.py)"]
+    EventBus["ActiveGraph Event Bus<br>(Emits 'QUERY_REQUESTED')"]
+    RuntimeLoader["Runtime Loader<br>(src/runtime/loader.py)"]
+    BehaviorsYAML["Compiled State & Behaviors Spec<br>(00_agent_model/behaviors.yaml)"]
+    ActiveGraphRuntime["ActiveGraph Runtime Core<br>(Sub-Graph Cypher Matcher)"]
+    OllamaClient["Ollama OpenAI API Client<br>(qwen3:8b @ localhost:11434)"]
+    HistoryLogger["History Logger<br>(Auto-appends to 00_agent_model/history.yaml)"]
+
+    UserQuery --> AgentWrapper
+    AgentWrapper -- Emits QUERY_REQUESTED --> EventBus
+    RuntimeLoader -- Loads & Registers --> BehaviorsYAML
+    RuntimeLoader --> ActiveGraphRuntime
+    EventBus --> ActiveGraphRuntime
+    ActiveGraphRuntime -- Extracts Sub-Graph Context & Prompt Template --> OllamaClient
+    ActiveGraphRuntime -- Auto-logs OPTIMIZE_PROMPT / ADD_CACHING --> HistoryLogger
+    HistoryLogger --> HistoryYAML[00_agent_model/history.yaml]
+    OllamaClient --> Response["Grounded Markdown Response"]
+```
+
+---
+
+## 📋 Detailed Component & Specification Upgrades
+
+### 1. `src/runtime/loader.py` (Replaces `retriever.py`)
+- Ingests `00_agent_model/behaviors.yaml` and registers Cypher patterns, handlers, and prompt templates into the ActiveGraph Runtime instance.
+- Manages sub-graph node indexing for high-speed, localized context assembly.
+
+### 2. `src/agents/nano_vllm_agent.py` (ActiveGraph Runtime Wrapper)
+- Serves as the user-facing entry point and interactive CLI REPL.
+- Wraps the ActiveGraph Runtime instance. When a question is asked:
+  1. Emits `QUERY_REQUESTED` event with query payload.
+  2. Runtime evaluates active Cypher behaviors.
+  3. Matched behavior triggers local sub-graph prompt execution via Ollama `qwen3:8b`.
+
+### 3. Compiler Upgrade (`src/okf/compiler.py` & `behaviors.yaml`)
+- Enhance `compiler.py` to generate explicit `prompt_template` fields for each behavior.
+- Define targeted Cypher patterns that extract **focused sub-graphs** (target concept + immediate `prerequisites` & `composed_of` nodes) to stay strictly within `qwen3:8b`'s context limits (8K~32K).
+
+### 4. `src/runtime/history_logger.py` (Runtime Auto-Logging)
+- When the runtime executes behavior optimization, prompt refinement (`OPTIMIZE_PROMPT`), or caching (`ADD_CACHING`), it automatically appends structured operation entries to `00_agent_model/history.yaml`.
+
+---
+
+## 🛠️ Step-by-Step Implementation Roadmap
+
+1. **Step 1: Compiler & Schema Update (`src/okf/compiler.py`)**
+   - Update compiler to inject `prompt_template` and focused sub-graph Cypher pattern queries into `00_agent_model/behaviors.yaml`.
+2. **Step 2: Build `RuntimeLoader` (`src/runtime/loader.py`)**
+   - Implement `loader.py` to load `behaviors.yaml` and initialize the ActiveGraph Runtime state.
+3. **Step 3: Build Ollama Client Wrapper (`src/runtime/ollama_client.py`)**
+   - Implement client for `http://localhost:11434/v1` targeting `qwen3:8b`.
+4. **Step 4: Build ActiveGraph Agent & Runtime Wrapper (`src/agents/nano_vllm_agent.py`)**
+   - Build runtime wrapper, event bus listener (`QUERY_REQUESTED`), and response handler.
+5. **Step 5: History Auto-Logger (`src/runtime/history_logger.py`)**
+   - Implement automatic logging of `OPTIMIZE_PROMPT` / `ADD_CACHING` ops to `00_agent_model/history.yaml`.
