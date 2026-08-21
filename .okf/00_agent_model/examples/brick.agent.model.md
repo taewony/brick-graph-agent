@@ -1,4 +1,4 @@
-Below is a **step-by-step systematic approach** to develop a **Super Agent** that combines three roles:
+Below is a **step-by-step systematic approach** to develop a **brick.agent** that combines three roles:
 
 1. **Text-to-SQL** – natural language question → SQL query  
 2. **OKF Ingest / Lint / Ask** – knowledge-base management and question answering  
@@ -189,7 +189,7 @@ A single entry point receives all user requests and routes them to the correct r
 
 | Behavior Name        | Trigger Event       | Emit Event             |
 |----------------------|---------------------|------------------------|
-| `super_agent.router` | `REQUEST_RECEIVED`  | `REQUEST_CLASSIFIED`   |
+| `brick_agent.router` | `REQUEST_RECEIVED`  | `REQUEST_CLASSIFIED`   |
 
 **Routing logic:**
 
@@ -209,7 +209,7 @@ After classification, the router can also **enrich** the payload with relevant g
 
 ## Step 6 — Define Cross‑Role Interaction Flows
 
-The super agent’s power comes from **cross‑role synergy**. Define explicit event sequences that involve multiple modules.
+The brick.agent’s power comes from **cross‑role synergy**. Define explicit event sequences that involve multiple modules.
 
 ### 6.1 SQL + OKF Flow
 
@@ -329,7 +329,7 @@ Every response must be traceable to the graph objects and rules used.
 
 ## Step 10 — Deployment & Packaging
 
-Package the super agent as a single runtime with configurable behavior groups.
+Package the brick.agent as a single runtime with configurable behavior groups.
 
 ```python
 from activegraph import Runtime
@@ -347,16 +347,16 @@ runtime.run(seed_event={"type": REQUEST_RECEIVED, "payload": user_request})
 
 - Use environment variables to enable/disable modules.
 - Provide CLI commands:
-  - `super-agent ask --role sql "Show total sales by region"`
-  - `super-agent okf ingest --source kb.yaml`
-  - `super-agent okf lint`
-  - `super-agent mentor status`
+  - `brick-agent ask --role sql "Show total sales by region"`
+  - `brick-agent okf ingest --source kb.yaml`
+  - `brick-agent okf lint`
+  - `brick-agent mentor status`
 
 ---
 
 ## Summary
 
-The **Super Agent** is built by:
+The **brick.agent** is built by:
 
 1. **Unifying** all knowledge into one ActiveGraph schema.  
 2. **Defining** a shared event vocabulary.  
@@ -371,12 +371,12 @@ This approach leverages the existing event‑driven ActiveGraph architecture and
 
 ---
 
-## Super-Agent Modeling Approach and sample SPECs
+## brick.agent Modeling Approach and sample SPECs
 
 ### folder structure
 
 ```
-super_agent_model/
+brick_agent_model/
 ├── manifest.yaml              # 에이전트 모델 메타데이터 (버전, 역할, 설명)
 ├── events.yaml                # 전체 이벤트 타입 정의 (문자열 상수)
 ├── objects.yaml               # 그래프 노드 타입 정의 (스키마)

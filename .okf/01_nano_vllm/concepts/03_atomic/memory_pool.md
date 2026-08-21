@@ -2,22 +2,25 @@
 type: AtomicConcept
 id: atomic.memory_pool
 title: Memory Pool (메모리 풀)
-description: GPU HBM(High Bandwidth Memory)을 시스템 초기화 시점에 사전 할당(Pre-allocate)하여 고정 크기 블록들의 연속된 풀로 관리함으로써, 런타임 동적 할당 오버헤드와 외부 단편화를 제거하는 추상화 계층
+description: GPU HBM(High Bandwidth Memory)을 시스템 초기화 시점에 사전 할당(Pre-allocate)하여 고정
+  크기 블록들의 연속된 풀로 관리함으로써, 런타임 동적 할당 오버헤드와 외부 단편화를 제거하는 추상화 계층
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-06T12:00:00Z
+  at: 2026-08-06 12:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-06T12:00:00Z
+- by: human:curator
+  at: 2026-08-06 12:00:00+00:00
 prerequisites:
-  - atomic.paged_kv_cache
+- atomic.paged_kv_cache
 composes_into:
-  - composite.block_manager (Module 5)
+- composite.block_manager (Module 5)
 sources:
-  - id: original_lab
-    resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ
-    title: "nano-vLLM Module 5: Memory Management & Block Manager"
+- id: original_lab
+  resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ
+  title: 'nano-vLLM Module 5: Memory Management & Block Manager'
+prerequisite_of:
+- composite.block_manager
 ---
 
 # Memory Pool (메모리 풀)
@@ -133,9 +136,9 @@ Memory Pool은 Module 5의 다른 원자적 개념들을 위한 **물리적 기�
 
 | 개념 | Memory Pool과의 관계 |
 |---|---|
-| **`atomic.block_allocator`** | Memory Pool의 Free List를 조작하여 블록을 할당/해제하는 **전략(Strategy)** |
-| **`atomic.swap_manager`** | Memory Pool이 가득 찼을 때, 일부 블록을 CPU로 내보내고(Evict) Free List를 확보하는 **안전장치(Safety Net)** |
-| **`composite.block_manager`** | Memory Pool을 포함하여 위 모든 컴포넌트를 **통합 운영**하는 최상위 관리자 |
+| **[`atomic.block_allocator`](block_allocator.md)** | Memory Pool의 Free List를 조작하여 블록을 할당/해제하는 **전략(Strategy)** |
+| **[`atomic.swap_manager`](swap_manager.md)** | Memory Pool이 가득 찼을 때, 일부 블록을 CPU로 내보내고(Evict) Free List를 확보하는 **안전장치(Safety Net)** |
+| **[`composite.block_manager`](../02_composite/block_manager.md)** | Memory Pool을 포함하여 위 모든 컴포넌트를 **통합 운영**하는 최상위 관리자 |
 
 ---
 
@@ -212,5 +215,5 @@ Memory Pool은 지금까지 학습한 개념 중 **"시스템을 실제로 운�
 3. **해제** – `release(block)` → 블록을 pool에 반환, 재사용 대기.
     
 ## 🔗 관련 관계
-- **PREREQUISITES**: continuous_batching, `kv_cache` (기본 KV 캐시 메모리)
-- **COMPOSED_OF**: max_batch_size,  `block_allocator` (블록 할당기), `swap_manager` (스와핑 관리자)
+- **PREREQUISITES**: [`continuous_batching`](continuous_batching.md), [`kv_cache`](kv_cache.md) (기본 KV 캐시 메모리)
+- **PREREQUISITE_OF**: [`max_batch_size`](max_batch_size.md), [`block_allocator`](block_allocator.md) (블록 할당기), [`swap_manager`](swap_manager.md) (스와핑 관리자)

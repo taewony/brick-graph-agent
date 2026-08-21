@@ -20,14 +20,14 @@ verified:
 
 ## 🧩 포함 원자적 개념
 
-- `continuous_batching`
-- `iteration_level_scheduling`
+- [`continuous_batching`](../03_atomic/continuous_batching.md)
+- [`iteration_level_scheduling`](../03_atomic/iteration_level_scheduling.md)
 
 ## 🏗️ Composite Concept
 
-- `dynamic_batcher` (Composite Concept) – 두 원자적 개념을 `COMPOSED_OF` 관계로 연결한 구현 체계.
+- [`dynamic_batcher`](../02_composite/dynamic_batcher.md) (Composite Concept) – 두 원자적 개념을 `COMPOSED_OF` 관계로 연결한 구현 체계.
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `kv_cache`
-- **PREREQUISITE_OF**: `dynamic_batcher` (Composite Concept, Module 03)
+- **PREREQUISITES**: [`kv_cache`](../03_atomic/kv_cache.md)
+- **PREREQUISITE_OF**: [`dynamic_batcher`](../02_composite/dynamic_batcher.md) (Composite Concept, Module 03)

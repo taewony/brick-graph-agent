@@ -2,18 +2,25 @@
 type: AtomicConcept
 id: atomic.master_worker
 title: Master-Worker Execution Pattern (마스터-워커 실행 패턴)
-description: Rank 0(Master)가 전체 분산 시스템의 조정자(Coordinator) 역할을 수행하고, Rank 1..N(Workers)이 Master의 명령에 따라 GPU 연산을 수행하는 동기식(Synchronous) 분산 실행 패턴
+description: Rank 0(Master)가 전체 분산 시스템의 조정자(Coordinator) 역할을 수행하고, Rank 1..N(Workers)이
+  Master의 명령에 따라 GPU 연산을 수행하는 동기식(Synchronous) 분산 실행 패턴
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-07T08:20:00Z
+  at: 2026-08-07 08:20:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-07T08:20:00Z
+- by: human:curator
+  at: 2026-08-07 08:20:00+00:00
 prerequisites:
-  - atomic.tensor_parallelism
+- atomic.tensor_parallelism
 composes_into:
-  - composite.distributed_executor (Module 07)
+- composite.distributed_executor (Module 07)
+sources:
+- id: vllm-paper
+  resource: https://arxiv.org/abs/2209.06155
+  title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
+prerequisite_of:
+- atomic.shared_memory_ipc
 ---
 
 # Master-Worker Execution Pattern (마스터-워커 실행 패턴)
@@ -68,6 +75,6 @@ nano-vLLM/vLLM에서 이 패턴은 `torch.distributed`의 **Rank** 개념을 기
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `atomic.tensor_parallelism`
-- **PREREQUISITE_OF**: `composite.distributed_executor`
-- **SYNERGY WITH**: `atomic.shared_memory_ipc` (명령 전달 채널)
+- **PREREQUISITES**: [`atomic.tensor_parallelism`](tensor_parallelism.md)
+- **PREREQUISITE_OF**: [`composite.distributed_serving`](../02_composite/distributed_serving_system.md)
+- **SYNERGY WITH**: [`atomic.shared_memory_ipc`](shared_memory_ipc.md) (명령 전달 채널)

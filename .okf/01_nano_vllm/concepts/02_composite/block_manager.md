@@ -2,36 +2,42 @@
 type: CompositeConcept
 id: composite.block_manager
 title: Physical Block Manager (물리적 블록 관리자)
-description: Module 5의 핵심 복합 개념으로, Memory Pool, Block Allocator, Swap Manager를 통합하여 GPU 메모리 블록의 할당, 해제, 스와핑을 총괄하는 물리적 자원 운영 엔진. Scheduler(Module 3)와 PagedAttention Manager(Module 4)에게 메모리 상태를 제공하고 블록 할당 인터페이스를 노출
+description: Module 5의 핵심 복합 개념으로, Memory Pool, Block Allocator, Swap Manager를 통합하여
+  GPU 메모리 블록의 할당, 해제, 스와핑을 총괄하는 물리적 자원 운영 엔진. Scheduler(Module 3)와 PagedAttention
+  Manager(Module 4)에게 메모리 상태를 제공하고 블록 할당 인터페이스를 노출
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-06T13:00:00Z
+  at: 2026-08-06 13:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-06T13:00:00Z
+- by: human:curator
+  at: 2026-08-06 13:00:00+00:00
 components:
-  - atomic.memory_pool
-  - atomic.block_allocator
-  - atomic.swap_manager
-  - atomic.swap_policy
+- atomic.memory_pool
+- atomic.block_allocator
+- atomic.swap_manager
+- atomic.swap_policy
 prerequisites:
-  - atomic.paged_kv_cache
-  - atomic.memory_pool
-  - composite.paged_attention_manager (Module 4)
+- atomic.memory_pool
+- atomic.paged_kv_cache
+- atomic.swap_manager
+- composite.paged_attention_manager (Module 4)
 composes_into:
-  - composite.distributed_serving (Module 7)
+- composite.distributed_serving (Module 7)
 sources:
-  - id: original_lab
-    resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ
-    title: "nano-vLLM Module 5: Memory Management & Block Manager"
+- id: original_lab
+  resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ
+  title: 'nano-vLLM Module 5: Memory Management & Block Manager'
+prerequisite_of:
+- composite.distributed_serving
+- composite.prefix_cache_manager
 ---
 
 # Physical Block Manager (물리적 블록 관리자)
 
 ## 📌 개요
 
-**Physical Block Manager**는 Module 5의 최상위 복합 개념으로, 지금까지 학습한 세 가지 원자적 개념(`memory_pool`, `block_allocator`, `swap_manager`)을 하나의 통합된 인터페이스로 묶어줍니다.
+**Physical Block Manager**는 Module 5의 최상위 복합 개념으로, 지금까지 학습한 세 가지 원자적 개념([`memory_pool`](../03_atomic/memory_pool.md), [`block_allocator`](../03_atomic/block_allocator.md), [`swap_manager`](../03_atomic/swap_manager.md))을 하나의 통합된 인터페이스로 묶어줍니다.
 
 이 관리자는 **Scheduler(Module 3)**와 **PagedAttention Manager(Module 4)** 사이에서 중개자(Mediator) 역할을 수행하며, 다음과 같은 실질적인 메모리 운영을 담당합니다.
 
@@ -46,9 +52,9 @@ sources:
 
 | 구성 요소 | 설명 |
 |---|---|
-| `atomic.memory_pool` | GPU HBM을 고정 크기 블록들의 풀로 추상화한 물리적 기반 |
-| `atomic.block_allocator` | First-Fit, Best-Fit, Next-Fit 등 다양한 할당 전략을 구현하는 정책 엔진 |
-| `atomic.swap_manager` | GPU 메모리 부족 시 블록을 CPU 메모리로 스왑아웃/스왑인하는 관리자 |
+| [`atomic.memory_pool`](../03_atomic/memory_pool.md) | GPU HBM을 고정 크기 블록들의 풀로 추상화한 물리적 기반 |
+| [`atomic.block_allocator`](../03_atomic/block_allocator.md) | First-Fit, Best-Fit, Next-Fit 등 다양한 할당 전략을 구현하는 정책 엔진 |
+| [`atomic.swap_manager`](../03_atomic/swap_manager.md) | GPU 메모리 부족 시 블록을 CPU 메모리로 스왑아웃/스왑인하는 관리자 |
 | `atomic.swap_policy` | 스왑아웃 대상 선정 정책 (LRU, LFU, FIFO, Priority-Based) |
 
 ---
@@ -238,8 +244,8 @@ class PhysicalBlockManager:
 
 
 > **⚠️ Module 4와 Module 5 Block Manager의 명확한 구분 (중요)**:
-> - **Module 4의 `composite.paged_attention_manager`**: **논리적 주소 변환 엔진** (Block Table 관리, Slot Mapping 계산, 논리→물리 매핑을 담당)
-> - **Module 5의 `composite.block_manager`**: **물리적 자원 운영 엔진** (Memory Pool에서 블록을 할당/해제하고, 메모리 부족 시 Swap Manager를 호출하는 **실제 메모리 관리자**)
+> - **Module 4의 [`composite.paged_attention_manager`](paged_attention_manager.md)**: **논리적 주소 변환 엔진** (Block Table 관리, Slot Mapping 계산, 논리→물리 매핑을 담당)
+> - **Module 5의 [`composite.block_manager`](block_manager.md)**: **물리적 자원 운영 엔진** (Memory Pool에서 블록을 할당/해제하고, 메모리 부족 시 Swap Manager를 호출하는 **실제 메모리 관리자**)
 >
 > 즉, Module 4는 **"어떻게 매핑할까?"** (Mapping), Module 5는 **"어떻게 할당/해제하고 부족할 때 대처할까?"** (Allocation & Swapping)를 담당합니다.
 

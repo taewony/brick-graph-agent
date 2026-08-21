@@ -2,33 +2,40 @@
 type: CompositeConcept
 id: composite.static_cache_manager
 title: Static Cache Manager (정적 KV 캐시 관리자)
-description: Static KV Cache 버퍼(연속 할당)와 Sequence Length Budget 정책을 통합하여, 토큰 Append 및 어텐션 슬라이스 생성을 총괄하는 1세대 캐시 관리 엔진. (Static Batching과는 무관)
+description: Static KV Cache 버퍼(연속 할당)와 Sequence Length Budget 정책을 통합하여, 토큰 Append
+  및 어텐션 슬라이스 생성을 총괄하는 1세대 캐시 관리 엔진. (Static Batching과는 무관)
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-05T13:22:00Z
+  at: 2026-08-05 13:22:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-05T13:22:00Z
+- by: human:curator
+  at: 2026-08-05 13:22:00+00:00
 components:
-  - static_kv_cache
-  - seq_len_budget
+- static_kv_cache
+- seq_len_budget
 prerequisites:
-  - composite.autoregressive_loop (Module 01)
+- atomic.seq_len_budget
+- atomic.static_kv_cache
+- composite.autoregressive_loop (Module 01)
 composes_into:
-  - composite.dynamic_batcher (Module 03)
+- composite.dynamic_batcher (Module 03)
+sources:
+- id: vllm-paper
+  resource: https://arxiv.org/abs/2209.06155
+  title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Static Cache Manager (정적 KV 캐시 관리자)
 
 ## 📌 개념 정의
 
-**Static Cache Manager**는 `static_kv_cache` (연속된 정적 버퍼)와 `seq_len_budget` (시퀀스 길이 예산 정책)을 결합한 기초 캐시 관리 컴포넌트입니다.  
+**Static Cache Manager**는 [`static_kv_cache`](../03_atomic/static_kv_cache.md) (연속된 정적 버퍼)와 [`seq_len_budget`](../03_atomic/seq_len_budget.md) (시퀀스 길이 예산 정책)을 결합한 기초 캐시 관리 컴포넌트입니다.  
 **Module 02**에서 다루는 개념으로, PagedAttention(Module 04) 이전의 1세대 KV Cache 관리 방식을 구현합니다.
 
 > 🚨 **주의: Static Batching과 혼동하지 마십시오!**  
 > 이 문서는 **"Static KV Cache" (메모리 할당 방식)**에 대한 설명입니다.  
-> **"Static Batching" (정적 배치 처리 방식)**은 `composite.dynamic_batcher` 문서에서 다룹니다.  
+> **"Static Batching" (정적 배치 처리 방식)**은 [`composite.dynamic_batcher`](dynamic_batcher.md) 문서에서 다룹니다.  
 > 두 개념은 완전히 다르며, 이름이 비슷하지만 전혀 다른 계층(Layer)의 최적화입니다.
 
 ---
@@ -66,12 +73,12 @@ composes_into:
 ## 🔗 조립 정보 (Composition & Relationships)
 
 - **COMPOSED_OF**:
-  - `atomic.static_kv_cache`
-  - `atomic.seq_len_budget`
+  - [`atomic.static_kv_cache`](../03_atomic/static_kv_cache.md)
+  - [`atomic.seq_len_budget`](../03_atomic/seq_len_budget.md)
 - **PREREQUISITES**:
-  - `composite.autoregressive_loop` (Module 01)
+  - [`composite.autoregressive_loop`](autoregressive_loop.md) (Module 01)
 - **PREREQUISITE_OF**:
-  - `composite.dynamic_batcher` (Module 03)
+  - [`composite.dynamic_batcher`](dynamic_batcher.md) (Module 03)
 
 ---
 
@@ -82,4 +89,4 @@ composes_into:
 2. **확장성 부족**: 긴 프롬프트나 대규모 배치 처리 시 메모리 낭비가 심각해집니다.
 3. **OOM 취약**: 연속된 큰 메모리 블록을 찾지 못해 Out Of Memory 오류가 빈번히 발생합니다.
 
-> 💡 **다음 학습 단계**: Module 04의 `composite.paged_attention_manager`에서 이 문제를 어떻게 해결하는지 학습하세요.
+> 💡 **다음 학습 단계**: Module 04의 [`composite.paged_attention_manager`](paged_attention_manager.md)에서 이 문제를 어떻게 해결하는지 학습하세요.

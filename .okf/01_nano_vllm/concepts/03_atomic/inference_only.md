@@ -2,14 +2,21 @@
 type: AtomicConcept
 id: atomic.inference_only
 title: Inference-Only Workload (추론 전용 워크로드)
-description: 학습(Training)과 달리 역전파 및 가중치 업데이트가 없으며 Forward Pass 및 메모리 읽기 중심인 추론 고유의 실행 특성
+description: 학습(Training)과 달리 역전파 및 가중치 업데이트가 없으며 Forward Pass 및 메모리 읽기 중심인 추론 고유의
+  실행 특성
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-05T13:11:00Z
+  at: 2026-08-05 13:11:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-05T13:11:00Z
+- by: human:curator
+  at: 2026-08-05 13:11:00+00:00
+sources:
+- id: vllm-paper
+  resource: https://arxiv.org/abs/2209.06155
+  title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
+prerequisite_of:
+- atomic.tensor_parallelism
 ---
 
 # Inference-Only Workload (추론 전용 워크로드)
@@ -39,5 +46,5 @@ verified:
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITE_OF**:
-  - `prefill_phase`
-  - `decode_phase`
+  - [`prefill_phase`](prefill_phase.md)
+  - [`decode_phase`](decode_phase.md)

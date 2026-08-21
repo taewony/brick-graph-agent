@@ -51,10 +51,10 @@ Module 7은 이 모든 인프라를 **다중 GPU 및 다중 노드** 환경으�
 
 ## 🧩 포함 원자적 개념
 
-- `atomic.tensor_parallelism` — 모델 가중치를 GPU 수에 따라 분할(Shard)하는 병렬화 전략
-- `atomic.master_worker` — Rank 0(Master)가 워커들을 조정하는 Master-Worker 실행 패턴
-- `atomic.nccl_communicator` — NCCL 백엔드를 통한 GPU 간 All-Reduce 등 집단 통신(Collective Communication)
-- `atomic.shared_memory_ipc` — Master가 워커에게 명령과 데이터를 브로드캐스트하는 공유 메모리 IPC 채널
+- [`atomic.tensor_parallelism`](../03_atomic/tensor_parallelism.md) — 모델 가중치를 GPU 수에 따라 분할(Shard)하는 병렬화 전략
+- [`atomic.master_worker`](../03_atomic/master_worker.md) — Rank 0(Master)가 워커들을 조정하는 Master-Worker 실행 패턴
+- [`atomic.nccl_communicator`](../03_atomic/nccl_communicator.md) — NCCL 백엔드를 통한 GPU 간 All-Reduce 등 집단 통신(Collective Communication)
+- [`atomic.shared_memory_ipc`](../03_atomic/shared_memory_ipc.md) — Master가 워커에게 명령과 데이터를 브로드캐스트하는 공유 메모리 IPC 채널
 - `atomic.distributed_kv_cache` — 분산 환경에서 각 GPU가 자신이 담당하는 KV Cache 블록을 관리
 
 ## 🏗️ 복합 개념 (Composite Concept)
@@ -63,8 +63,8 @@ Module 7은 이 모든 인프라를 **다중 GPU 및 다중 노드** 환경으�
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `block_manager`, `paged_attention_manager`, `prefix_cache_manager`
-- **COMPOSES_INTO**: `serving_system` (전체 vLLM 시스템의 최상위 완성)
+- **PREREQUISITES**: [`block_manager`](../02_composite/block_manager.md), [`paged_attention_manager`](../02_composite/paged_attention_manager.md), [`composite.prefix_cache_manager`](../02_composite/caching_strategy.md)
+- **COMPOSES_INTO**: [`serving_system`](../02_composite/serving_system.md) (전체 vLLM 시스템의 최상위 완성)
 
 ---
 

@@ -21,11 +21,11 @@ verified:
 ## 🧱 포함된 개념 (Concepts)
 
 ### 원자적 개념 (Atomic Concepts)
-- **[static_kv_cache](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/static_kv_cache.md)**: 최대 시퀀스 길이에 맞춰 사전 할당된 연속형 텐서 버퍼 구조
-- **[seq_len_budget](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/seq_len_budget.md)**: 메모리 파편화를 방지하기 위해 요청별로 사전 정의하는 시퀀스 예산 관리 정책
+- **[`static_kv_cache`](../03_atomic/static_kv_cache.md)**: 최대 시퀀스 길이에 맞춰 사전 할당된 연속형 텐서 버퍼 구조
+- **[`seq_len_budget`](../03_atomic/seq_len_budget.md)**: 메모리 파편화를 방지하기 위해 요청별로 사전 정의하는 시퀀스 예산 관리 정책
 
 ### 복합 개념 (Composite Concepts)
-- **[static_cache_manager](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/static_cache_manager.md)**: 정적 텐서 버퍼의 인덱싱, 토큰 추가(Append), 오버플로우 검사를 담당하는 기초 캐시 관리자
+- **[`static_cache_manager`](../02_composite/static_cache_manager.md)**: 정적 텐서 버퍼의 인덱싱, 토큰 추가(Append), 오버플로우 검사를 담당하는 기초 캐시 관리자
 
 ---
 
@@ -45,4 +45,4 @@ verified:
 ## 📝 실습 과제 (Lab Assignment)
 
 1. `max_seq_len` 크기의 Tensor를 사전 할당(`torch.zeros`)하고 디코드 스텝마다 인덱스를 1씩 증가시키며 $K, V$ 슬라이싱 업데이트 구현하기
-2. `seq_len_budget` 초과 시 처리할 예외(Sequence Length Overflow Error) 메커니즘 설계하기
+2. [`seq_len_budget`](../03_atomic/seq_len_budget.md) 초과 시 처리할 예외(Sequence Length Overflow Error) 메커니즘 설계하기

@@ -2,23 +2,27 @@
 type: AtomicConcept
 id: atomic.slot_mapping
 title: Slot Mapping (슬롯 매핑)
-description: PagedAttention에서 특정 토큰 위치(Token Position)를 논리적 블록 ID와 물리적 블록 ID로 변환하고, 해당 블록 내부의 슬롯 인덱스(Slot Index)를 계산하여 Attention 커널이 불연속적 GPU 메모리에 저장된 KV Cache에 O(1) 시간에 접근할 수 있게 하는 주소 변환 공식
+description: PagedAttention에서 특정 토큰 위치(Token Position)를 논리적 블록 ID와 물리적 블록 ID로 변환하고,
+  해당 블록 내부의 슬롯 인덱스(Slot Index)를 계산하여 Attention 커널이 불연속적 GPU 메모리에 저장된 KV Cache에 O(1)
+  시간에 접근할 수 있게 하는 주소 변환 공식
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-07T09:30:00Z
+  at: 2026-08-07 09:30:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-07T09:30:00Z
+- by: human:curator
+  at: 2026-08-07 09:30:00+00:00
 prerequisites:
-  - atomic.paged_kv_cache
-  - atomic.block_table
+- atomic.paged_kv_cache
+- atomic.block_table
 composes_into:
-  - composite.paged_attention_manager (Module 04)
+- composite.paged_attention_manager (Module 04)
 sources:
-  - id: vllm_paged_attention
-    resource: https://arxiv.org/abs/2309.06180
-    title: "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+- id: vllm_paged_attention
+  resource: https://arxiv.org/abs/2309.06180
+  title: Efficient Memory Management for Large Language Model Serving with PagedAttention
+prerequisite_of:
+- composite.paged_attention_manager
 ---
 
 # Slot Mapping (슬롯 매핑)
@@ -111,10 +115,10 @@ void* key_ptr = block_ptr + slot_offset + head_offset;
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITES**:
-  - `atomic.paged_kv_cache` (물리적 블록이 실제로 존재해야 함)
-  - `atomic.block_table` (논리-물리 매핑 정보가 필요함)
-- **COMPOSES_INTO**: `composite.paged_attention_manager` (Module 04)
-- **SYNERGY WITH**: `atomic.paged_kv_cache`, `atomic.block_table` (이 세 가지가 PagedAttention의 논리-물리 주소 변환 계층을 완성)
+  - [`atomic.paged_kv_cache`](paged_kv_cache.md) (물리적 블록이 실제로 존재해야 함)
+  - [`atomic.block_table`](block_table.md) (논리-물리 매핑 정보가 필요함)
+- **COMPOSES_INTO**: [`composite.paged_attention_manager`](../02_composite/paged_attention_manager.md) (Module 04)
+- **SYNERGY WITH**: [`atomic.paged_kv_cache`](paged_kv_cache.md), [`atomic.block_table`](block_table.md) (이 세 가지가 PagedAttention의 논리-물리 주소 변환 계층을 완성)
 
 ---
 

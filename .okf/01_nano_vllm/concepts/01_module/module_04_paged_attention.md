@@ -34,18 +34,18 @@ PagedAttention은 **논리적 캐시(Logical Cache)와 물리적 메모리(Physi
 
 ## 🧩 포함 원자적 개념
 
-- `atomic.paged_kv_cache` — KV Cache를 고정 크기 블록으로 분할하여 관리
-- `atomic.block_table` — 논리적 블록 번호를 물리적 블록 주소로 매핑하는 테이블
-- `atomic.slot_mapping` — 특정 토큰 위치를 물리적 블록 내 슬롯으로 변환
+- [`atomic.paged_kv_cache`](../03_atomic/paged_kv_cache.md) — KV Cache를 고정 크기 블록으로 분할하여 관리
+- [`atomic.block_table`](../03_atomic/block_table.md) — 논리적 블록 번호를 물리적 블록 주소로 매핑하는 테이블
+- [`atomic.slot_mapping`](../03_atomic/slot_mapping.md) — 특정 토큰 위치를 물리적 블록 내 슬롯으로 변환
 
 ## 🏗️ 복합 개념 (Composite Concept)
 
-- `composite.paged_attention_manager` — 블록 테이블 관리, 할당/해제, 슬롯 매핑을 총괄하는 PagedAttention 관리자
+- [`composite.paged_attention_manager`](../02_composite/paged_attention_manager.md) — 블록 테이블 관리, 할당/해제, 슬롯 매핑을 총괄하는 PagedAttention 관리자
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `kv_cache`, `continuous_batching`
-- **PREREQUISITE_OF**: `serving_system`
+- **PREREQUISITES**: [`kv_cache`](../03_atomic/kv_cache.md), [`continuous_batching`](../03_atomic/continuous_batching.md)
+- **PREREQUISITE_OF**: [`serving_system`](../02_composite/serving_system.md)
 
 ---
 

@@ -10,6 +10,10 @@ generated:
 verified:
   - by: human:curator
     at: 2026-08-05T13:15:00Z
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Feed-Forward Network (FFN / MLP)
@@ -27,4 +31,4 @@ $$\text{FFN}(x) = (\text{Swish}(xW_{\text{gate}}) \odot xW_{\text{up}}) W_{\text
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITE_OF**:
-  - `decoder_layer`
+  - [`decoder_layer`](../02_composite/decoder_layer.md)

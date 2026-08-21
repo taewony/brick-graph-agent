@@ -2,22 +2,31 @@
 type: AtomicConcept
 id: atomic.paged_kv_cache
 title: Paged KV Cache (페이지드 KV 캐시)
-description: "KV Cache를 연속된 하나의 큰 텐서가 아닌, 고정 크기(예: 16 tokens)의 블록(Block) 단위로 GPU 메모리에 분산 저장하여 외부 단편화를 완전히 제거하고, 메모리 활용률을 끌어올리는 PagedAttention의 물리적 저장소 구조"
+description: 'KV Cache를 연속된 하나의 큰 텐서가 아닌, 고정 크기(예: 16 tokens)의 블록(Block) 단위로 GPU 메모리에
+  분산 저장하여 외부 단편화를 완전히 제거하고, 메모리 활용률을 끌어올리는 PagedAttention의 물리적 저장소 구조'
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-07T09:00:00Z
+  at: 2026-08-07 09:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-07T09:00:00Z
+- by: human:curator
+  at: 2026-08-07 09:00:00+00:00
 prerequisites:
-  - atomic.kv_cache
+- atomic.kv_cache
+- atomic.static_kv_cache
 composes_into:
-  - composite.paged_attention_manager (Module 04)
+- composite.paged_attention_manager (Module 04)
 sources:
-  - id: vllm_paged_attention
-    resource: https://arxiv.org/abs/2309.06180
-    title: "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+- id: vllm_paged_attention
+  resource: https://arxiv.org/abs/2309.06180
+  title: Efficient Memory Management for Large Language Model Serving with PagedAttention
+prerequisite_of:
+- atomic.block_table
+- atomic.distributed_kv
+- atomic.memory_pool
+- atomic.slot_mapping
+- composite.block_manager
+- composite.paged_attention_manager
 ---
 
 # Paged KV Cache (페이지드 KV 캐시)
@@ -90,7 +99,7 @@ Sequence A의 Block Table:
 └─────────────────┴──────────────────┘
 ```
 
-> 💡 **핵심**: Paged KV Cache는 **물리적 저장소(Physical Storage)**의 역할만 담당하며, 논리적 연속성은 `atomic.block_table`이 제공합니다. 두 개념은 분리되어 있지만, PagedAttention이 동작하기 위해서는 반드시 함께 사용됩니다.
+> 💡 **핵심**: Paged KV Cache는 **물리적 저장소(Physical Storage)**의 역할만 담당하며, 논리적 연속성은 [`atomic.block_table`](block_table.md)이 제공합니다. 두 개념은 분리되어 있지만, PagedAttention이 동작하기 위해서는 반드시 함께 사용됩니다.
 
 ---
 
@@ -108,12 +117,12 @@ Sequence A의 Block Table:
 
 ## 🔗 관련 관계 (Relationships)
 
-- **PREREQUISITES**: `atomic.kv_cache` (기본 KV Cache 개념을 확장)
-- **COMPOSES_INTO**: `composite.paged_attention_manager` (Module 04)
+- **PREREQUISITES**: [`atomic.kv_cache`](kv_cache.md) (기본 KV Cache 개념을 확장)
+- **COMPOSES_INTO**: [`composite.paged_attention_manager`](../02_composite/paged_attention_manager.md) (Module 04)
 - **SYNERGY WITH**:
-  - `atomic.block_table` (논리-물리 주소 매핑)
-  - `atomic.slot_mapping` (토큰 위치 → 블록 내 슬롯 변환)
-  - `atomic.memory_pool` (Module 05) – 블록을 할당할 물리적 메모리 풀
+  - [`atomic.block_table`](block_table.md) (논리-물리 주소 매핑)
+  - [`atomic.slot_mapping`](slot_mapping.md) (토큰 위치 → 블록 내 슬롯 변환)
+  - [`atomic.memory_pool`](memory_pool.md) (Module 05, 블록을 할당할 물리적 메모리 풀)
 
 ---
 

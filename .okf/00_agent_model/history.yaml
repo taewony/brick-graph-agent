@@ -2,8 +2,8 @@
 # OKF Graph Transformation History Operators Log
 # The OKF Compiler ingests this log to apply transformations to the IR before generating behaviors.yaml.
 
-version: 1.0.0
-updated_at: "2026-08-12T17:15:00Z"
+version: 1.6.0
+updated_at: "2026-08-14T12:00:00Z"
 history:
   - id: op_001
     timestamp: "2026-08-06T07:45:00Z"
@@ -39,3 +39,126 @@ history:
       - atomic.distributed_serving
     deprecate_target: false
     reason: "Modularize distributed serving layer into fault tolerance, load balancing, and distributed KV store."
+
+  - id: op_004
+    timestamp: "2026-08-14T09:00:00Z"
+    op: ADD_EVENT_TYPE
+    target: "llm.requested / llm.responded (+ tool.requested / tool.responded, behavior.failed)"
+    reason: >
+      LLM observability via event sourcing: every Reader call must be recorded
+      as llm.requested/llm.responded (model, prompt_hash, cost_usd, cache_hit,
+      latency_seconds) so the append-only log doubles as the LLM observability
+      store. Names follow the activegraph 1.10.0 native llm.* vocabulary.
+
+  - id: op_005
+    timestamp: "2026-08-14T09:10:00Z"
+    op: ADD_DOC
+    target: 00_agent_model/events.yaml
+    reason: >
+      Canonicalize the unified brick.agent event vocabulary. Resolves the three
+      dialects (brick docs okf/knowledge/ingested, example models okf.ingested,
+      compiler behaviors.yaml GRAPH_COMPILED) into one events.yaml with
+      payload schemas and legacy `aliases`; covers core/sql/okf/mentor/observability.
+
+  - id: op_006
+    timestamp: "2026-08-14T09:20:00Z"
+    op: ADD_DOC
+    target: 00_agent_model/behaviors.spec.yaml
+    reason: >
+      Integrated declarative behavior spec with Python handler bindings
+      (handler: <module>::<function>) and per-behavior observability contract
+      (emits_llm_events / emits_tool_events), mapping SQL/OKF/Mentor/Router
+      roles onto the actual activegraph behaviors.
+
+  - id: op_007
+    timestamp: "2026-08-14T09:30:00Z"
+    op: ADD_DOC
+    target: 00_agent_model/concepts/observability.md
+    reason: >
+      Materialize the observability analysis as a spec: LLM seam contract
+      (llm.requested/llm.responded), causal chain (trace.causal_chain),
+      durable store + deterministic replay (SQLiteEventStore, Runtime.load/fork,
+      llm response cache), structured logging/OTel/Prometheus, and a P0-P2
+      implementation roadmap.
+
+  - id: op_008
+    timestamp: "2026-08-14T09:40:00Z"
+    op: RENAME
+    target: 00_agent_model/examples/super.agent.model.md
+    new_name: 00_agent_model/examples/brick.agent.model.md
+    reason: >
+      Rename the "Super Agent" model to "brick.agent" (system naming alignment);
+      content occurrences (brick_agent.router, brick-agent CLI, brick_agent_model/)
+      and behaviors.yaml references updated accordingly.
+
+  - id: op_009
+    timestamp: "2026-08-14T10:00:00Z"
+    op: ADD_BEHAVIOR
+    target: "okf_agent.ingest / okf_agent.lint / okf_agent.assemble_context / okf_agent.generate_answer"
+    status: implemented
+    reason: >
+      Phase 3 implemented the OKF runtime behaviors in src/agents/okf/behaviors.py
+      (behavior_ingest / behavior_lint / behavior_assemble_context /
+      behavior_generate_answer), following the canonical events.yaml chains
+      (ingest: okf.parsed→okf.validated→okf.loaded; lint: okf.analyzed→okf.linted;
+      ask: okf.context.assembled→llm.requested→llm.responded→okf.answer.generated).
+      The ask chain satisfies the observability contract: reader.answer() is
+      wrapped in llm.requested/llm.responded (model, prompt_hash, latency_seconds).
+      behaviors.spec.yaml status updated planned → implemented.
+
+  - id: op_010
+    timestamp: "2026-08-14T10:30:00Z"
+    op: ADD_GUARDRAIL
+    target: config/agent_model/guardrails.yaml
+    reason: >
+      Phase 4 implemented the shared runtime services (src/runtime/:
+      reader_registry, embedder, history_logger, guardrails, loader) and
+      the guardrails config: sql.allow_only_select (SELECT-only +
+      forbidden keywords), okf.required_lint_before_ask (ask requires a
+      clean lint pass), mentor.min_improvement_threshold. SQL and OKF
+      behaviors refactored onto the shared reader registry.
+
+  - id: op_011
+    timestamp: "2026-08-14T11:00:00Z"
+    op: ADD_BEHAVIOR
+    target: "brick_agent.router (+ brick-agent CLI, Phase 5 observability)"
+    status: implemented
+    reason: >
+      Phase 5 (observability & event-sourcing persistence) and Phase 6
+      (router + CLI) implemented: src/runtime/{event_store,observability,
+      replay}.py, src/agents/router.py::classify, and the brick-agent CLI
+      (ask sql / ask okf / ingest / lint / db seed / mentor status with
+      --store/--trace/--real). llm.responded payload extended with
+      `answer` for deterministic replay; SQL draft_query wrapped in the
+      llm.* seam; SQLite event store wired via persist_to (data/events.db)
+      and store-front demo DB seeded (data/store_front.db).
+
+  - id: op_012
+    timestamp: "2026-08-14T11:30:00Z"
+    op: REWIRE_BEHAVIOR
+    target: "mentor.observe (loop.* behaviors)"
+    reason: >
+      Phase 7 mentor integration: the loop now drives OKF and SQL targets
+      end-to-end (baseline→diagnose→hypothesize→gates→promote→attribute)
+      using each target's own taxonomy/action-space; new OKF failure
+      clusters can be added via OkfTaxonomy.register_regime (e.g.
+      wrong-concept-selected). Mentor observation extended to consume the
+      LLM observability trail — observability.summarize_llm_usage(store)
+      aggregates llm.responded calls/latency/errors (printed by
+      `brick-agent mentor status`). Validation is deterministic via
+      ReplayReader (recorded answers served with no LLM re-call).
+
+  - id: op_013
+    timestamp: "2026-08-14T12:00:00Z"
+    op: ADD_BEHAVIOR
+    target: "okf_agent.lint (audit detectors ×4)"
+    status: implemented
+    reason: >
+      OKF 문서 감사 기반 lint 확장: inverse_relationship_detector(관계
+      단방향 기재 — 논리적 모순), dangling_reference_detector(body 관계
+      블록의 미존재 노드 참조; OKFValidator는 frontmatter만 검사하므로
+      누락 영역), relationship_noise_detector(관계 블록 산문 파싱 쓰레기),
+      missing_evidence_detector(frontmatter sources 증빙 부재). 관계
+      파서 강화(plausible-id 검증 + 노이즈 캡처, OkfNode에
+      raw_relationships/relationship_noise/evidence 보존). 01_nano_vllm
+      실측: 총 106건(순환 7, 역방향 53, dangling 14, 노이즈 4, 증빙 28).

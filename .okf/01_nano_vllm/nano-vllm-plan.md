@@ -29,27 +29,27 @@
 
 | 개념 ID | 설명 | 선행 조건 |
 |---|---|---|
-| `atomic.memory_pool` | GPU 메모리 풀 추상화 | `atomic.paged_kv_cache` |
-| `atomic.block_allocator` | 블록 할당/해제 전략 (First‑Fit, Best‑Fit) | `atomic.memory_pool` |
-| `atomic.swap_manager` | CPU‑GPU 스와핑 정책 | `atomic.block_allocator` |
-| `composite.block_manager` | PagedAttention 블록 관리자 전체 | `atomic.paged_kv_cache` + `atomic.block_allocator` |
+| [`atomic.memory_pool`](concepts/03_atomic/memory_pool.md) | GPU 메모리 풀 추상화 | [`atomic.paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md) |
+| [`atomic.block_allocator`](concepts/03_atomic/block_allocator.md) | 블록 할당/해제 전략 (First‑Fit, Best‑Fit) | [`atomic.memory_pool`](concepts/03_atomic/memory_pool.md) |
+| [`atomic.swap_manager`](concepts/03_atomic/swap_manager.md) | CPU‑GPU 스와핑 정책 | [`atomic.block_allocator`](concepts/03_atomic/block_allocator.md) |
+| [`composite.block_manager`](concepts/02_composite/block_manager.md) | PagedAttention 블록 관리자 전체 | [`atomic.paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md) + [`atomic.block_allocator`](concepts/03_atomic/block_allocator.md) |
 
 ### Module 6: Prefix Caching & Reuse
 
 | 개념 ID | 설명 | 선행 조건 |
 |---|---|---|
-| `atomic.prefix_cache` | 공통 프롬프트 접두사 KV Cache 재사용 | `atomic.paged_kv_cache` |
-| `atomic.cache_hit_detection` | 캐시 히트 탐지 알고리즘 | `atomic.prefix_cache` |
-| `composite.caching_strategy` | 전체 캐싱 정책 (LRU, LFU 등) | `atomic.prefix_cache` + `atomic.swap_manager` |
+| [`atomic.prefix_cache`](concepts/03_atomic/prefix_cache.md) | 공통 프롬프트 접두사 KV Cache 재사용 | [`atomic.paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md) |
+| [`atomic.cache_hit_detection`](concepts/03_atomic/cache_hit_detection.md) | 캐시 히트 탐지 알고리즘 | [`atomic.prefix_cache`](concepts/03_atomic/prefix_cache.md) |
+| `composite.caching_strategy` | 전체 캐싱 정책 (LRU, LFU 등) | [`atomic.prefix_cache`](concepts/03_atomic/prefix_cache.md) + [`atomic.swap_manager`](concepts/03_atomic/swap_manager.md) |
 
 ### Module 7: Distributed Serving & Load Balancing
 
 | 개념 ID | 설명 | 선행 조건 |
 |---|---|---|
-| `atomic.distributed_kv` | 분산 환경에서의 KV Cache 공유 | `composite.block_manager` |
-| `atomic.load_balancer` | 요청 분산 및 노드 선택 전략 | `atomic.continuous_batching` |
-| `atomic.fault_tolerance` | 장애 복구 및 체크포인팅 | `atomic.distributed_kv` |
-| `composite.distributed_serving` | 전체 분산 서빙 시스템 | `composite.serving_system` + `atomic.distributed_kv` |
+| [`atomic.distributed_kv`](concepts/03_atomic/distributed_kv.md) | 분산 환경에서의 KV Cache 공유 | [`composite.block_manager`](concepts/02_composite/block_manager.md) |
+| [`atomic.load_balancer`](concepts/03_atomic/load_balancer.md) | 요청 분산 및 노드 선택 전략 | [`atomic.continuous_batching`](concepts/03_atomic/continuous_batching.md) |
+| [`atomic.fault_tolerance`](concepts/03_atomic/fault_tolerance.md) | 장애 복구 및 체크포인팅 | [`atomic.distributed_kv`](concepts/03_atomic/distributed_kv.md) |
+| [`composite.distributed_serving`](concepts/02_composite/distributed_serving_system.md) | 전체 분산 서빙 시스템 | [`composite.serving_system`](concepts/02_composite/serving_system.md) + [`atomic.distributed_kv`](concepts/03_atomic/distributed_kv.md) |
 
 ---
 

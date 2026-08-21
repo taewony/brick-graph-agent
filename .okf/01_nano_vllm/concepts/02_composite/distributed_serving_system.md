@@ -2,31 +2,37 @@
 type: CompositeConcept
 id: composite.distributed_serving
 title: Distributed Serving System (분산 서빙 시스템)
-description: Tensor Parallelism 기반의 다중 GPU/다중 노드 분산 실행 엔진 위에, 로드 밸런서, 장애 허용(Fault Tolerance), 분산 KV 캐시를 통합하여 외부 클라이언트에게 고가용·고성능의 KV-API를 제공하는 엔드-투-엔드 서비스 스택
+description: Tensor Parallelism 기반의 다중 GPU/다중 노드 분산 실행 엔진 위에, 로드 밸런서, 장애 허용(Fault
+  Tolerance), 분산 KV 캐시를 통합하여 외부 클라이언트에게 고가용·고성능의 KV-API를 제공하는 엔드-투-엔드 서비스 스택
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-06T17:00:00Z
+  at: 2026-08-06 17:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-06T17:00:00Z
+- by: human:curator
+  at: 2026-08-06 17:00:00+00:00
 components:
-  - composite.distributed_executor   # Tensor Parallelism + NCCL + Master-Worker
-  - atomic.distributed_kv           # 파티셔닝/복제된 KV 캐시 (각 GPU의 블록 관리)
-  - atomic.load_balancer            # 요청 라우팅, 헬스 체크, 로드 분산
-  - atomic.fault_tolerance          # 장애 감지, 리더 재선출, 복제 재배치
-  - atomic.observability            # 메트릭, 로깅, 트레이싱 (선택)
+- composite.distributed_executor
+- atomic.distributed_kv
+- atomic.load_balancer
+- atomic.fault_tolerance
+- atomic.observability
 prerequisites:
-  - module.prefix_caching
-  - composite.block_manager
-  - composite.paged_attention_manager
+- atomic.distributed_kv
+- atomic.fault_tolerance
+- atomic.master_worker
+- atomic.shared_memory_ipc
+- atomic.tensor_parallelism
+- composite.block_manager
+- composite.paged_attention_manager
+- module.prefix_caching
 sources:
-  - id: distributed_execution
-    resource: https://deepwiki.com/liguodongiot/nano-vllm/5-distributed-execution
-    title: "nano-vLLM Distributed Execution"
-  - id: vllm_parallelism
-    resource: https://docs.vllm.ai/en/v0.21.0/serving/parallelism_scaling/
-    title: "vLLM Parallelism and Scaling"
+- id: distributed_execution
+  resource: https://deepwiki.com/liguodongiot/nano-vllm/5-distributed-execution
+  title: nano-vLLM Distributed Execution
+- id: vllm_parallelism
+  resource: https://docs.vllm.ai/en/v0.21.0/serving/parallelism_scaling/
+  title: vLLM Parallelism and Scaling
 ---
 
 # Distributed Serving System (분산 서빙 시스템)
@@ -118,9 +124,9 @@ sources:
 | 구성 요소 | 설명 |
 |---|---|
 | `composite.distributed_executor` | Tensor Parallelism, NCCL, Master-Worker를 통합한 분산 실행 엔진 (Module 7 핵심) |
-| `atomic.distributed_kv` | 각 GPU의 KV Cache 블록을 파티셔닝하고 복제하여 분산 저장소로 추상화 |
-| `atomic.load_balancer` | 클라이언트 요청을 가용 노드에 분산하고, 헬스 체크로 노드 상태 관리 |
-| `atomic.fault_tolerance` | 장애 감지, 리더 재선출, 복제 재배치를 통해 시스템 자가 회복 |
+| [`atomic.distributed_kv`](../03_atomic/distributed_kv.md) | 각 GPU의 KV Cache 블록을 파티셔닝하고 복제하여 분산 저장소로 추상화 |
+| [`atomic.load_balancer`](../03_atomic/load_balancer.md) | 클라이언트 요청을 가용 노드에 분산하고, 헬스 체크로 노드 상태 관리 |
+| [`atomic.fault_tolerance`](../03_atomic/fault_tolerance.md) | 장애 감지, 리더 재선출, 복제 재배치를 통해 시스템 자가 회복 |
 | `atomic.observability` | 메트릭, 로깅, 분산 트레이싱을 통한 운영 가시성 확보 (선택적) |
 
 ---

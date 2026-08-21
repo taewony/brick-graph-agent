@@ -2,6 +2,7 @@ import os
 import re
 import json
 import sys
+import posixpath
 import yaml
 from pathlib import Path
 from datetime import datetime
@@ -93,20 +94,21 @@ def build_okf_visualizer(okf_dir: Path, output_file: Path):
             if target.startswith('file:///'):
                 clean = target.replace('file:///', '').replace('\\', '/')
                 if '.okf/' in clean:
-                    rel = '.okf/' + clean.split('.okf/')[1]
+                    after = clean.split('.okf/', 1)[1]
+                    # drop the bundle-name segment: .okf/01_nano_vllm/concepts/... -> concepts/...
+                    seg = after.split('/', 1)
+                    rel = seg[1] if len(seg) > 1 else seg[0]
                 else:
                     rel = clean
             else:
                 base_dir = Path(node['path']).parent
-                rel = str(base_dir / target).replace('\\', '/')
-                if not rel.startswith('.okf/'):
-                    rel = '.okf/' + rel
+                rel = posixpath.normpath(str(base_dir / target).replace('\\', '/'))
 
             target_id = node_map.get(rel)
             if target_id and target_id != src_id:
                 edges.append({'source': src_id, 'target': target_id, 'relation': 'REFERENCES'})
 
-        for field in ['prerequisites', 'composes_into']:
+        for field in ['prerequisites', 'composes_into', 'prerequisite_of']:
             if field in fm:
                 items = fm[field]
                 if isinstance(items, str):
@@ -172,6 +174,37 @@ def generate_dashboard_html(nodes_json, edges_json):
         }}
         .sidebar-header p {{
             font-size: 0.8rem;
+            color: #94a3b8;
+        }}
+        .nav-bar {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 15px;
+            background-color: #0f172a;
+            border-bottom: 1px solid #334155;
+        }}
+        .nav-btn {{
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background-color: #1e293b;
+            color: #e2e8f0;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: 0.15s;
+        }}
+        .nav-btn:hover:not(:disabled) {{
+            background-color: #0284c7;
+            border-color: #0284c7;
+        }}
+        .nav-btn:disabled {{
+            opacity: 0.35;
+            cursor: default;
+        }}
+        .nav-pos {{
+            margin-left: auto;
+            font-size: 0.75rem;
             color: #94a3b8;
         }}
         .filter-bar {{
@@ -320,6 +353,11 @@ def generate_dashboard_html(nodes_json, edges_json):
         <div class="sidebar-header">
             <h1>🧱 BrickGraphAgent</h1>
             <p>OKF 지식 그래프 & 문서 브라우저</p>
+        </div>
+        <div class="nav-bar">
+            <button id="btn-back" class="nav-btn" disabled title="뒤로 (Alt+←)">◀ 뒤로</button>
+            <button id="btn-forward" class="nav-btn" disabled title="앞으로 (Alt+→)">앞으로 ▶</button>
+            <span id="nav-position" class="nav-pos"></span>
         </div>
         <div class="filter-bar" id="filter-bar">
             <button class="filter-btn all active" data-group="all">전체</button>
@@ -497,13 +535,22 @@ def generate_dashboard_html(nodes_json, edges_json):
             }});
         }});
 
-        // 노드 선택 함수
-        function selectNode(nodeId) {{
+        // 노드 선택 함수 — 브라우징 히스토리(앞으로/뒤로) 지원
+        let history = [];
+        let historyIndex = -1;
+        const backBtn = document.getElementById('btn-back');
+        const forwardBtn = document.getElementById('btn-forward');
+        const positionEl = document.getElementById('nav-position');
+
+        function updateNavButtons() {{
+            backBtn.disabled = historyIndex <= 0;
+            forwardBtn.disabled = historyIndex >= history.length - 1;
+            positionEl.textContent = history.length > 0 ? (historyIndex + 1) + ' / ' + history.length : '';
+        }}
+
+        function renderNode(nodeId) {{
             const node = allNodes.find(n => n.id === nodeId);
             if (!node) return;
-            if (!selectedGroups.has(node.group)) {{
-                return;
-            }}
             document.querySelectorAll('.node-item').forEach(el => el.classList.remove('active'));
             const active = document.getElementById('sidebar-' + nodeId);
             if (active) active.classList.add('active');
@@ -519,12 +566,35 @@ def generate_dashboard_html(nodes_json, edges_json):
             `;
             hljs.highlightAll();
 
+            // Resolve a link href relative to the DISPLAYED node's directory.
+            // Module files link downward with file-relative paths like
+            // "../03_atomic/kv_cache.md"; index links use "concepts/...".
+            function resolveNodePath(href, baseNode) {{
+                if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('/') || href.startsWith('#')) {{
+                    return href;
+                }}
+                const dir = baseNode.path.includes('/')
+                    ? baseNode.path.split('/').slice(0, -1).join('/') : '';
+                const joined = dir ? dir + '/' + href : href;
+                const parts = [];
+                for (const p of joined.split('/')) {{
+                    if (p === '' || p === '.') continue;
+                    if (p === '..') {{ if (parts.length) parts.pop(); }}
+                    else parts.push(p);
+                }}
+                return parts.join('/');
+            }}
+
             markdownContainer.querySelectorAll('a').forEach(link => {{
                 const href = link.getAttribute('href');
                 if (href && (href.includes('.okf/') || href.includes('.md'))) {{
                     link.onclick = (e) => {{
                         e.preventDefault();
-                        const target = allNodes.find(n => href.includes(n.path) || href.includes(n.id));
+                        const resolved = resolveNodePath(href, node);
+                        const target =
+                            allNodes.find(n => n.path === resolved)
+                            || allNodes.find(n => resolved && (resolved.includes(n.path) || resolved.includes(n.id)))
+                            || allNodes.find(n => href.includes(n.path) || href.includes(n.id));
                         if (target) {{
                             selectNode(target.id);
                             if (network) {{
@@ -534,7 +604,44 @@ def generate_dashboard_html(nodes_json, edges_json):
                     }};
                 }}
             }});
+            updateNavButtons();
         }}
+
+        // 기록(히스토리)을 남기며 노드 렌더링
+        function selectNode(nodeId) {{
+            const node = allNodes.find(n => n.id === nodeId);
+            if (!node) return;
+            if (history[historyIndex] === nodeId) {{
+                renderNode(nodeId);
+                return;
+            }}
+            // 현재 위치 이후의 앞으로-기록은 버리고 새 노드를 push
+            history = history.slice(0, historyIndex + 1);
+            history.push(nodeId);
+            historyIndex = history.length - 1;
+            renderNode(nodeId);
+        }}
+
+        function goBack() {{
+            if (historyIndex > 0) {{
+                historyIndex -= 1;
+                renderNode(history[historyIndex]);
+            }}
+        }}
+
+        function goForward() {{
+            if (historyIndex < history.length - 1) {{
+                historyIndex += 1;
+                renderNode(history[historyIndex]);
+            }}
+        }}
+
+        backBtn.addEventListener('click', goBack);
+        forwardBtn.addEventListener('click', goForward);
+        document.addEventListener('keydown', function(e) {{
+            if (e.altKey && e.key === 'ArrowLeft') {{ e.preventDefault(); goBack(); }}
+            if (e.altKey && e.key === 'ArrowRight') {{ e.preventDefault(); goForward(); }}
+        }});
 
         // 초기 렌더링
         applyFilters();

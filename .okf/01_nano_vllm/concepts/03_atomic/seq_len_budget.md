@@ -10,6 +10,10 @@ generated:
 verified:
   - by: human:curator
     at: 2026-08-05T13:22:00Z
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Sequence Length Budget (시퀀스 예산 정책)
@@ -25,4 +29,4 @@ verified:
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITE_OF**:
-  - `static_cache_manager`
+  - [`static_cache_manager`](../02_composite/static_cache_manager.md)

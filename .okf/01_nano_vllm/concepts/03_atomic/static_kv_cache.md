@@ -10,6 +10,10 @@ generated:
 verified:
   - by: human:curator
     at: 2026-08-05T13:22:00Z
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Static KV Cache (정적 KV 캐시 버퍼)
@@ -39,7 +43,7 @@ value_buffer[:, :, current_pos, :] = new_value
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITES**:
-  - `kv_cache` (Module 01)
+  - [`kv_cache`](kv_cache.md) (Module 01)
 - **PREREQUISITE_OF**:
-  - `static_cache_manager`
-  - `paged_kv_cache` (Module 04 - 한계 극복 대상)
+  - [`static_cache_manager`](../02_composite/static_cache_manager.md)
+  - [`paged_kv_cache`](paged_kv_cache.md) (Module 04 - 한계 극복 대상)

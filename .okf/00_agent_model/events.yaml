@@ -1,0 +1,301 @@
+# =============================================================================
+# brick.agent — Canonical Event Vocabulary (events.yaml)
+# -----------------------------------------------------------------------------
+# The single source of truth for brick.agent event types. Resolves the three
+# dialects that previously drifted apart:
+#   - brick concept docs  (okf/knowledge/ingested, okf/graph/compiled,
+#                          agent/query/processed)
+#   - example agent models (okf.ingested, okf.linted, okf.context.assembled,
+#                           sql.question.asked, ...)
+#   - compiler-generated behaviors.yaml (GRAPH_COMPILED / COMPOSITE_ASSEMBLED)
+# and adds the LLM-observability events (llm.*, tool.*) that the activegraph
+# runtime 1.10.0 provides natively.
+#
+# Conventions (contracts that make the log an observability store):
+#   - event name = <domain>.<verb>.<past-participle>; append-only, immutable
+#   - every event payload carries request_id (or question_id) + run_id
+#   - every LLM round-trip MUST be recorded as llm.requested / llm.responded
+#     (model, prompt_hash, cost_usd, cache_hit, latency_seconds)
+#   - failures are payload fields (error / issues), never exceptions
+#   - `aliases` lists legacy names so old consumers can migrate
+# =============================================================================
+
+version: 1.0.0
+updated_at: "2026-08-14T00:00:00Z"
+runtime: activegraph 1.10.0
+agent: brick.agent
+
+domains:
+  - id: core
+    title: "Request lifecycle (router + dispatcher)"
+  - id: sql
+    title: "Natural-language DB query & response service"
+  - id: okf
+    title: "OKF wiki knowledge base (ingest / lint / ask Q&A)"
+  - id: mentor
+    title: "Incremental-learning mentor loop"
+  - id: observability
+    title: "LLM / tool observability (runtime-provided)"
+
+events:
+  # ------------------------------------------------------------------- core
+  - name: request.received
+    domain: core
+    issuer: entrypoint
+    semantics: "A user request enters the system."
+    payload: { request_id: string, text: string, meta: object }
+
+  - name: request.classified
+    domain: core
+    issuer: brick_agent.router
+    semantics: "The router assigns the request to a role chain."
+    payload:
+      request_id: string
+      role: "enum[sql, okf_ingest, okf_lint, okf_ask, mentor]"
+      confidence: float
+      original: object
+
+  - name: response.ready
+    domain: core
+    issuer: finalizer
+    semantics: "Final response assembled for delivery."
+    payload: { request_id: string, response: string, sources: "list[object]" }
+
+  # -------------------------------------------------------------------- sql
+  - name: question.asked
+    domain: sql
+    issuer: entrypoint
+    aliases: [sql.question.asked]
+    semantics: "A natural-language DB question enters the SQL chain."
+    payload: { question_id: string, question: string, schema_id: string }
+
+  - name: schema.encoded
+    domain: sql
+    issuer: sql_agent.encode_schema
+    aliases: [sql.schema.encoded]
+    semantics: "Schema tables/columns/FKs are materialized as graph objects."
+    payload:
+      question_id: string
+      schema_id: string
+      n_tables: int
+      n_columns: int
+      n_foreign_keys: int
+
+  - name: columns.scored
+    domain: sql
+    issuer: sql_agent.retrieve_relevant_columns
+    aliases: [sql.columns.scored]
+    semantics: "Columns are embedded and ranked against the question."
+    payload:
+      question_id: string
+      scorer_model: string
+      scores: "dict[str, float]"
+      ranked: "list[str]"
+      selected_column_ids: "list[str]"
+
+  - name: prompt.assembled
+    domain: sql
+    issuer: sql_agent.prompt_pipeline
+    aliases: [sql.prompt.assembled]
+    semantics: "Final LLM prompt assembled (after prompt transforms)."
+    payload:
+      question_id: string
+      prompt: string
+      prompt_parts: object
+      schema_meta: object
+      applied_transforms: "list[str]"
+      transform_errors: "list[object]"
+
+  - name: query.drafted
+    domain: sql
+    issuer: sql_agent.draft_query
+    aliases: [sql.query.drafted]
+    semantics: "Reader produced (or failed to produce) SQL."
+    payload:
+      question_id: string
+      predicted_sql: string
+      drafter_error: string
+      reader_name: string
+
+  - name: sql.evaluated
+    domain: sql
+    issuer: sql.eval (backend)
+    semantics: "Predicted SQL judged against gold (result-set equality)."
+    payload:
+      question_id: string
+      correct: bool
+      exec_error: string
+      regime: string
+      signals: object
+
+  # -------------------------------------------------------------------- okf
+  - name: okf.ingest.requested
+    domain: okf
+    issuer: entrypoint
+    semantics: "OKF source (path/URL/in-memory) submitted for ingestion."
+    payload: { kb_id: string, okf_source: "string|dict", format: string }
+
+  - name: okf.parsed
+    domain: okf
+    issuer: okf_agent.ingest (parse step)
+    semantics: "OKF source parsed into an intermediate document."
+    payload: { kb_id: string, n_documents: int, parse_errors: "list[object]" }
+
+  - name: okf.validated
+    domain: okf
+    issuer: okf_agent.ingest (validate step)
+    semantics: "Structural/link integrity checked (deterministic)."
+    payload: { kb_id: string, valid: bool, validation_errors: "list[object]" }
+
+  - name: okf.loaded
+    domain: okf
+    issuer: okf_agent.ingest (load step)
+    aliases: [okf.ingested, okf/knowledge/ingested, okf/graph/compiled]
+    semantics: "Validated knowledge materialized into the graph."
+    payload:
+      kb_id: string
+      n_concepts: int
+      n_rules: int
+      n_schema_tables: int
+      n_relations: int
+
+  - name: okf.lint.requested
+    domain: okf
+    issuer: entrypoint
+    semantics: "Lint requested over a knowledge base."
+    payload: { kb_id: string, lint_config: object }
+
+  - name: okf.analyzed
+    domain: okf
+    issuer: okf_agent.lint (analyze step)
+    aliases: [okf.analyzed]
+    semantics: "Graph analyzed (orphans, mappings, triggers, cycles)."
+    payload: { kb_id: string, stats: object }
+
+  - name: okf.linted
+    domain: okf
+    issuer: okf_agent.lint (detect step)
+    aliases: [okf.linted]
+    semantics: "Lint issues emitted (deterministic detectors)."
+    payload:
+      kb_id: string
+      valid: bool
+      n_errors: int
+      n_warnings: int
+      issues: "list[object]"
+
+  - name: okf.ask.requested
+    domain: okf
+    issuer: entrypoint
+    aliases: [agent/query/processed]
+    semantics: "A user question enters the OKF ask chain."
+    payload: { request_id: string, question: string, kb_id: string }
+
+  - name: okf.context.assembled
+    domain: okf
+    issuer: okf_agent.assemble_context
+    semantics: "Relevant concepts/rules/schema retrieved and expanded."
+    payload:
+      request_id: string
+      context_parts:
+        concepts: "list[object]"
+        rules: "list[object]"
+        schema: object
+        relations: "list[object]"
+      applied_context_strategy: string
+
+  - name: okf.answer.generated
+    domain: okf
+    issuer: okf_agent.generate_answer
+    semantics: "Reader produced (or failed to produce) the grounded answer."
+    payload:
+      request_id: string
+      answer: string
+      context_parts: object
+      applied_transforms: "list[str]"
+      error: string
+
+  # ----------------------------------------------------------------- mentor
+  # Conceptual mentor chain; the concrete implementation reuses the
+  # src.core.loop behaviors below (same events, runtime-native names).
+  - name: mentor.observe
+    domain: mentor
+    issuer: loop (baseline)
+    semantics: "Mentor observes outcomes (sql.evaluated / okf.answer.generated)."
+    payload: { run_id: string, n_outcomes: int }
+
+  - name: mentor.analyze
+    domain: mentor
+    issuer: loop.diagnose
+    aliases: [regime.histogram]
+    semantics: "Failures classified into regimes."
+    payload: { run_id: string, histogram: object }
+
+  - name: mentor.propose
+    domain: mentor
+    issuer: loop.hypothesize
+    aliases: [transform.drafted]
+    semantics: "A candidate prompt-transform/rule is drafted."
+    payload: { run_id: string, draft: object, target_regime: string }
+
+  - name: mentor.validate
+    domain: mentor
+    issuer: loop gates
+    aliases: [transform.static_passed, transform.sandbox_passed, transform.eval_diff]
+    semantics: "Candidate validated (static/sandbox/eval-diff)."
+    payload: { run_id: string, gate: string, passed: bool, diff: object }
+
+  - name: mentor.apply
+    domain: mentor
+    issuer: loop.promote
+    aliases: [transform.promoted, transform.discarded]
+    semantics: "Candidate promoted to active (or discarded)."
+    payload: { run_id: string, name: string, promoted: bool, reasons: "list[str]" }
+
+  # ------------------------------------------- observability (runtime-native)
+  - name: llm.requested
+    domain: observability
+    issuer: "@llm_behavior | draft behaviors"
+    semantics: "An LLM call is about to be made."
+    payload:
+      request_id: string
+      model: string
+      prompt_hash: string
+      prompt: string
+      temperature: float
+      max_tokens: int
+      trace_id: "string (optional)"
+      span_id: "string (optional)"
+
+  - name: llm.responded
+    domain: observability
+    issuer: "@llm_behavior | draft behaviors"
+    semantics: "The LLM call returned (success or failure), with cost/latency and the recorded answer (for deterministic replay)."
+    payload:
+      request_id: string
+      caused_by: "llm.requested id"
+      model: string
+      answer: string
+      cost_usd: float
+      latency_seconds: float
+      cache_hit: bool
+      usage: "dict (optional)"
+      error: "string (optional)"
+
+  - name: tool.requested
+    domain: observability
+    issuer: behaviors invoking tools
+    semantics: "A tool (SQL executor, embedder, ...) is invoked."
+    payload: { request_id: string, tool: string, args: object }
+
+  - name: tool.responded
+    domain: observability
+    issuer: behaviors invoking tools
+    semantics: "The tool returned (success or failure)."
+    payload: { request_id: string, tool: string, cost_usd: float, latency_seconds: float, error: "string (optional)" }
+
+  - name: behavior.failed
+    domain: observability
+    issuer: runtime
+    semantics: "A behavior handler raised; failure captured as payload."
+    payload: { request_id: string, behavior: string, error_type: string, error_message: string, doc_url: "string (optional)" }

@@ -8,6 +8,10 @@ generated:
   by: agent:builder/1.0
   at: 2026-08-06T08:07:41Z
 verified: []
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Cache Hit Detection (캐시 히트 탐지)

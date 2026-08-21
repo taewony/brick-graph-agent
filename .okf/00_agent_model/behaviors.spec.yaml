@@ -1,0 +1,272 @@
+# =============================================================================
+# brick.agent — Integrated Behavior Spec (behaviors.spec.yaml)
+# -----------------------------------------------------------------------------
+# Canonical declarative behavior spec for the brick.agent runtime:
+#
+#   사내 문서 → OKF wiki KB (ingest/lint) → Q&A (okf ask)
+#   + 자연어 기반 DB 쿼리/응답 (sql)
+#   + incremental-learning mentor loop (mentor)
+#   + request router (core)
+#
+# NOTE: this is a DIFFERENT artifact from the compiler-generated
+# .okf/00_agent_model/behaviors.yaml (which emits Cypher graph patterns for
+# KB knowledge nodes). This spec describes RUNTIME behavior chains and binds
+# each behavior to a Python handler, following the plan's
+# `handler: <module>::<function>` convention.
+#
+# Contract fields:
+#   - subscribes_to / emits   : event names from events.yaml (canonical)
+#   - handler                 : Python binding (implemented | planned)
+#   - status                  : implemented | planned
+#   - observability           : which llm.* / tool.* events the behavior must
+#                               emit (the LLM-observability seam)
+# =============================================================================
+
+version: 1.0.0
+updated_at: "2026-08-14T00:00:00Z"
+runtime: activegraph 1.10.0
+agent: brick.agent
+events_ref: events.yaml
+
+roles:
+  - id: router
+    title: "Request router (core)"
+    entry_event: request.received
+    exit_event: request.classified
+  - id: sql
+    title: "Natural-language DB query & response"
+    entry_event: question.asked
+    exit_event: sql.evaluated
+  - id: okf
+    title: "OKF wiki knowledge base (ingest / lint / ask)"
+    entry_events: [okf.ingest.requested, okf.lint.requested, okf.ask.requested]
+    exit_events: [okf.loaded, okf.linted, okf.answer.generated]
+  - id: mentor
+    title: "Incremental-learning loop"
+    entry_event: loop.start
+    exit_event: loop.stopped
+
+behaviors:
+  # ------------------------------------------------------------------ core
+  - name: brick_agent.router
+    role: router
+    subscribes_to: [request.received]
+    emits: request.classified
+    handler: src.agents.router::classify
+    status: implemented
+    description: >
+      Classify the request (deterministic keyword heuristics + embedding
+      fallback) into sql / okf_ingest / okf_lint / okf_ask / mentor, then
+      dispatch via the brick-agent CLI.
+    observability:
+      emits_llm_events: optional   # only if classification uses the LLM
+
+  # ------------------------------------------------------------------- sql
+  - name: sql_agent.encode_schema
+    role: sql
+    subscribes_to: [question.asked]
+    emits: schema.encoded
+    handler: src.core.targets.sql.agent.behaviors::behavior_encode_schema
+    status: implemented
+    description: "Materialize tables/columns/FKs as graph objects."
+    observability:
+      emits_llm_events: false
+
+  - name: sql_agent.retrieve_relevant_columns
+    role: sql
+    subscribes_to: [schema.encoded]
+    emits: columns.scored
+    handler: src.core.targets.sql.agent.behaviors::behavior_score_columns
+    status: implemented
+    description: "Embed question + columns, rank, select top-k."
+    observability:
+      emits_tool_events: optional  # embedder call may emit tool.requested/responded
+
+  - name: sql_agent.prompt_pipeline
+    role: sql
+    subscribes_to: [columns.scored]
+    emits: prompt.assembled
+    handler: src.core.targets.sql.agent.behaviors::behavior_prompt_pipeline
+    status: implemented
+    description: "Assemble prompt_parts and run the prompt-transform pipeline."
+    observability:
+      emits_llm_events: false
+
+  - name: sql_agent.draft_query
+    role: sql
+    subscribes_to: [prompt.assembled]
+    emits: query.drafted
+    handler: src.core.targets.sql.agent.behaviors::behavior_draft_query
+    status: implemented
+    description: "Call the Reader to draft SQL."
+    observability:
+      emits_llm_events: required   # wrap reader.answer() with llm.requested / llm.responded
+
+  - name: sql_agent.evaluate
+    role: sql
+    subscribes_to: [query.drafted]
+    emits: sql.evaluated
+    handler: src.core.targets.sql.eval::SqlEvalBackend.run_on_split (external)
+    status: implemented
+    description: "Execute predicted SQL, compare result sets, emit correctness + regime."
+    observability:
+      emits_tool_events: required  # sqlite execution as tool.requested/responded (optional)
+
+  # ------------------------------------------------------------------- okf
+  - name: okf_agent.ingest
+    role: okf
+    subscribes_to: [okf.ingest.requested]
+    emits: [okf.parsed, okf.validated, okf.loaded]
+    handler: src.agents.okf.behaviors::behavior_ingest
+    status: implemented
+    description: >
+      Parse OKF source, validate deterministically (reuse
+      src.core.targets.okf.taxonomy + src.okf.validator), load into the graph.
+    observability:
+      emits_llm_events: false
+
+  - name: okf_agent.lint
+    role: okf
+    subscribes_to: [okf.lint.requested]
+    emits: [okf.analyzed, okf.linted]
+    handler: src.agents.okf.behaviors::behavior_lint
+    status: implemented
+    description: >
+      Run the deterministic OKF detectors (concept_orphan_detector,
+      rule_schema_reference_detector, ambiguous_trigger_detector,
+      cyclic_concept_detector) and emit issues.
+    observability:
+      emits_llm_events: false
+
+  - name: okf_agent.assemble_context
+    role: okf
+    subscribes_to: [okf.ask.requested]
+    emits: okf.context.assembled
+    handler: src.agents.okf.behaviors::behavior_assemble_context
+    status: implemented
+    description: >
+      Embed the question, retrieve top-K concepts, expand the concept tree
+      (parents/children), select rules + mapped schema, assemble context_parts.
+    observability:
+      emits_tool_events: optional  # embedder call
+
+  - name: okf_agent.generate_answer
+    role: okf
+    subscribes_to: [okf.context.assembled]
+    emits: okf.answer.generated
+    handler: src.agents.okf.behaviors::behavior_generate_answer
+    status: implemented
+    description: >
+      Call OkfActionSpace.build_prompt_parts + prompt_transforms pipeline,
+      render the prompt, call the Reader, emit the grounded answer.
+    observability:
+      emits_llm_events: required   # wrap reader.answer() with llm.requested / llm.responded
+
+  # ---------------------------------------------------------------- mentor
+  # The mentor role reuses the implemented src.core.loop behaviors; the
+  # conceptual mentor.observe → mentor.apply chain maps onto these.
+  - name: loop.run_baseline
+    role: mentor
+    subscribes_to: [loop.start]
+    emits: baseline.recorded
+    handler: src.core.loop.behaviors::behavior_run_baseline
+    status: implemented
+    observability:
+      emits_llm_events: optional   # baseline evals may call the LLM
+
+  - name: loop.diagnose
+    role: mentor
+    subscribes_to: [baseline.recorded]
+    emits: [regime.histogram, mentor.analyze]
+    handler: src.core.loop.behaviors::behavior_diagnose
+    status: implemented
+    description: "Classify failures into target taxonomy regimes."
+
+  - name: loop.hypothesize
+    role: mentor
+    subscribes_to: [regime.histogram]
+    emits: [transform.drafted, mentor.propose]
+    handler: src.core.loop.behaviors::behavior_hypothesize
+    status: implemented
+    description: "Draft a candidate prompt-transform for the dominant regime."
+
+  - name: loop.static_gate
+    role: mentor
+    subscribes_to: [transform.drafted]
+    emits: [transform.static_passed, transform.static_rejected]
+    handler: src.core.loop.behaviors::behavior_static_gate
+    status: implemented
+
+  - name: loop.sandbox_gate
+    role: mentor
+    subscribes_to: [transform.static_passed]
+    emits: [transform.sandbox_passed, transform.sandbox_rejected]
+    handler: src.core.loop.behaviors::behavior_sandbox_gate
+    status: implemented
+
+  - name: loop.eval_diff
+    role: mentor
+    subscribes_to: [transform.sandbox_passed]
+    emits: transform.eval_diff
+    handler: src.core.loop.behaviors::behavior_eval_diff
+    status: implemented
+    description: "Run eval with candidate installed vs reverted; compute deltas."
+
+  - name: loop.promote
+    role: mentor
+    subscribes_to: [transform.eval_diff]
+    emits: [transform.promoted, transform.discarded, mentor.apply]
+    handler: src.core.loop.behaviors::behavior_promote
+    status: implemented
+
+  - name: loop.attribute
+    role: mentor
+    subscribes_to: [transform.promoted]
+    emits: attribution.recorded
+    handler: src.core.loop.behaviors::behavior_attribute
+    status: implemented
+
+  - name: loop.iterate_decision
+    role: mentor
+    subscribes_to: [attribution.recorded, transform.discarded, transform.static_rejected, transform.sandbox_rejected]
+    emits: [loop.iterate, loop.stopped]
+    handler: src.core.loop.behaviors::behavior_iterate_decision_on_promote
+    status: implemented
+    description: "Rotate to the next regime or stop (name the wall)."
+
+  - name: loop.rebaseline
+    role: mentor
+    subscribes_to: [loop.iterate]
+    emits: baseline.recorded
+    handler: src.core.loop.behaviors::behavior_rebaseline
+    status: implemented
+
+# ---------------------------------------------------------------------------
+# Cross-role flows (event chains)
+# ---------------------------------------------------------------------------
+workflows:
+  - id: sql_flow
+    chain: [question.asked, schema.encoded, columns.scored, prompt.assembled, query.drafted, sql.evaluated]
+    notes: "Optionally enriched by OKF concepts mapped to the schema."
+
+  - id: okf_ingest_flow
+    chain: [okf.ingest.requested, okf.parsed, okf.validated, okf.loaded]
+
+  - id: okf_lint_flow
+    chain: [okf.lint.requested, okf.analyzed, okf.linted]
+
+  - id: okf_ask_flow
+    chain: [okf.ask.requested, okf.context.assembled, okf.answer.generated]
+    notes: "May splice the sql_flow when the answer needs live DB values."
+
+  - id: mentor_flow
+    chain: [loop.start, baseline.recorded, regime.histogram, transform.drafted,
+            transform.static_passed, transform.sandbox_passed, transform.eval_diff,
+            transform.promoted, attribution.recorded, loop.iterate | loop.stopped]
+
+  - id: cross_role_sql_okf
+    chain: [question.asked, okf.context.assembled, schema.encoded, columns.scored, prompt.assembled, query.drafted, sql.evaluated, mentor.observe]
+    notes: "SQL scoring/prompt enriched with OKF concept context."
+
+guardrails_ref: config/agent_model/guardrails.yaml (implemented — sql.allow_only_select, okf.required_lint_before_ask, mentor.min_improvement_threshold)
+history_ref: history.yaml

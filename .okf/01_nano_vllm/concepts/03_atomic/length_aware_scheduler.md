@@ -8,6 +8,10 @@ generated:
   by: agent:builder/1.0
   at: 2026-08-06T07:38:00Z
 verified: []
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Length Aware Scheduler (길이‑인식 스케줄러)
@@ -19,17 +23,17 @@ verified: []
 
 ## ⚙️ 핵심 동작
 - **길이 기반 가중치**: `weight = 1 / token_length` 로 우선순위 계산.
-- **자원 사용량 체크**: 현재 배치의 추정 메모리 사용량이 `max_batch_size` 를 초과하면 새 배치를 시작합니다.
+- **자원 사용량 체크**: 현재 배치의 추정 메모리 사용량이 [`max_batch_size`](max_batch_size.md) 를 초과하면 새 배치를 시작합니다.
 - **동적 재배치**: 실행 중인 배치에 새로운 짧은 요청이 들어오면 즉시 삽입하고, 긴 요청은 다음 배치에 할당합니다.
 
 ## ⚙️ 핵심 요소
-- length_aware_scheduler – 토큰 길이와 연산량 기반 스케줄링 로직  
-- max_batch_size – 하드웨어 제한에 따른 배치 상한 (예: 2048 토큰) 
+- [`length_aware_scheduler`](length_aware_scheduler.md) – 토큰 길이와 연산량 기반 스케줄링 로직  
+- [`max_batch_size`](max_batch_size.md) – 하드웨어 제한에 따른 배치 상한 (예: 2048 토큰) 
 
 ## 🔗 선행 관계
-- **PREREQUISITES**: continuous_batching  
-- **PREREQUISITE_OF**: dynamic_batcher (Composite Concept, Module 03)
-- **COMPOSED_OF**: `max_batch_size` (Maximum batch size parameter)
+- **PREREQUISITES**: [`continuous_batching`](continuous_batching.md)  
+- **PREREQUISITE_OF**: [`dynamic_batcher`](../02_composite/dynamic_batcher.md) (Composite Concept, Module 03)
+- **COMPOSED_OF**: [`max_batch_size`](max_batch_size.md) (Maximum batch size parameter)
 
 ## 📚 참고 자료
 - Sarathi‑Serve 연속 배치 구현  

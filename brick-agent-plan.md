@@ -7,13 +7,13 @@ We have built a robust **OKF Compiler** that:
 - Applies **history operators** (SPLIT, MERGE, etc.) to evolve the graph.
 - Emits **behaviors.yaml** – a static, Cypher‑based executable control spec for ActiveGraph.
 
-To build the full **Brick‑Agent** (text‑to‑SQL + OKF‑ingest/lint/ask + incremental‑learning mentor), we need to generalise the architecture.
+To build the full **brick.agent** (사내 문서 → OKF wiki KB → Q&A + 자연어 기반 DB 쿼리/응답 + incremental‑learning mentor), we need to generalise the architecture **and secure LLM observability via event sourcing** so every agent decision is visible and replayable.
 
 ---
 
-## Revised Brick‑Agent Architecture
+## Revised brick.agent Architecture
 
-We will keep the existing OKF Compiler as the **knowledge ingestion and management layer**, but extend it to handle **multiple knowledge domains** (sales DB schema, OKF concepts/rules). On top of that, we place an **ActiveGraph Runtime** that executes event‑driven behaviours for each role. A **Mentor** observes outcomes and feeds improvements back into the knowledge graph via the compiler.
+We keep the existing OKF Compiler as the **knowledge ingestion and management layer**, extended to handle **multiple knowledge domains** (DB schema, OKF concepts/rules). On top of that we place an **ActiveGraph Runtime** that executes event‑driven behaviours for each role. A **Mentor** observes outcomes and feeds improvements back via the knowledge graph and the prompt-transform pipeline. **Every LLM round-trip is recorded as `llm.requested` / `llm.responded` events** so the append‑only event log doubles as the observability store.
 
 ---
 
@@ -21,7 +21,7 @@ We will keep the existing OKF Compiler as the **knowledge ingestion and manageme
 
 agent_model로부터 “코드 생성”에서 “설정 로딩 + 기존 코드 조립”으로 전환한다.
 이렇게 하면 유지보수 부담이 줄고, 이미 검증된 Self-Improving loop를 그대로 활용할 수 있다.
-다만, agent_model은 전체 brick-agent의 핵심 사항을 명세하고 있어야 한다.
+다만, agent_model은 전체 brick.agent의 핵심 사항을 명세하고 있어야 한다.
 
 | 기존 계획 | 수정된 계획 |
 |-----------|--------------|
@@ -30,10 +30,10 @@ agent_model로부터 “코드 생성”에서 “설정 로딩 + 기존 코드 
 | Compiler가 전체 behavior 코드 생성 | Compiler는 `behaviors.yaml` **계약 명세**와 **handler 참조**만 생성 |
 | 역할별 코드를 새로 작성 | SQL·Mentor는 `regimes`에서 재사용, OKF만 패턴 따라 신규 작성 |
 
-- The YAML files (config/agent_model/*.yaml) will serve as declarative contracts for events, objects, and guardrails, but not as a source of Python code generation.
-
-- The actual behaviours are defined in Python (reusing src/core/agent, src/core/loop, src/core/targets/sql) and registered directly with ActiveGraph.
-
+- **Canonical 계약**: 통합 이벤트 어휘와 행동 스펙은 `.okf/00_agent_model/events.yaml` + `behaviors.spec.yaml`이 단일 원천(single source of truth)이며, `config/agent_model/*.yaml`은 guardrails/workflows 등 파생 설정만 담는다. (`events.yaml`은 레거시 이벤트 이름을 `aliases`로 매핑한다.)
+- The YAML files serve as **declarative contracts** for events, objects, and guardrails, **not** as a source of Python code generation.
+- The actual behaviours are defined in Python (reusing `src/core/agent`, `src/core/loop`, `src/core/targets/sql`, `src/core/targets/okf`) and registered directly with ActiveGraph.
+- **Observability 원칙**: 모든 LLM 호출은 `llm.requested`/`llm.responded`로 로그에 남고(model, prompt_hash, cost_usd, cache_hit, latency_seconds), 실패는 payload 필드로 기록된다(예외가 아님). 상세 계약은 `.okf/00_agent_model/concepts/observability.md`.
 - The OKF compiler continues to manage knowledge integrity and produce graph data; the runtime loader consumes that data into ActiveGraph.
 
 ---
@@ -42,28 +42,34 @@ agent_model로부터 “코드 생성”에서 “설정 로딩 + 기존 코드 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Brick-Agent Entry Point                │
+│                    brick.agent Entry Point                 │
 │            (CLI / API – request routing & dispatch)        │
 ├─────────────────────────────────────────────────────────────┤
 │              ActiveGraph Runtime (event bus)               │
 │   – SQL behaviours   – OKF behaviours   – Mentor behaviours│
-│   (실제 핸들러는 regimes.core에서 로드)                   │
+│   – Router behaviour (실제 핸들러는 src/core에서 로드)     │
 ├─────────────────────────────────────────────────────────────┤
 │   Shared Services: Reader Registry, Embedder, Transform    │
 │   Pipeline, Evaluator, History Logger, Guardrails          │
-│   (regimes.core.agent / eval / loop 재사용)                │
+│   (src/core/agent / eval / loop 재사용)                    │
 ├─────────────────────────────────────────────────────────────┤
-│  OKF Compiler + IR (기존 유지) → behaviors.yaml (계약)    │
-│  – .okf 지식베이스 검증/변환                              │
+│   Observability Layer (event sourcing)                     │
+│   – llm.requested/llm.responded (model·cost·latency·cache) │
+│   – EventStore (SQLite) + Runtime.load/fork 재생           │
+│   – trace.causal_chain · structured logging · OTel/Prom    │
+├─────────────────────────────────────────────────────────────┤
+│  OKF Compiler + IR (기존 유지) → behaviors.yaml (계약)     │
+│  – .okf 지식베이스 검증/변환                               │
 │  – 컴파일된 그래프 스펙 + handler 참조 생성                │
 │  – runtime 이력은 .okf/*/history.yaml에 기록               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **SQL role** → `regimes.targets.sql` 전체 재사용  
-- **Mentor role** → `regimes.loop` 전체 재사용  
-- **OKF role** → `regimes.targets.longmemeval`의 구조를 참고하여 신규 작성  
-- **공통 서비스** → `regimes.agent` 전체 재사용
+- **SQL role** → `src/core/targets/sql` 전체 재사용 (+ `draft_query`에 `llm.*` 이벤트 emit 추가)
+- **Mentor role** → `src/core/loop` 전체 재사용
+- **OKF role** → `src/core/targets/okf` (Phase 2 완료) 위에 behaviors 신규 작성
+- **공통 서비스** → `src/core/agent` 전체 재사용
+- **Canonical 계약** → `.okf/00_agent_model/events.yaml`, `behaviors.spec.yaml`, `concepts/observability.md`
 
 ---
 
@@ -120,7 +126,7 @@ brick-agent/
 │   │       │   │   ├── events.py
 │   │       │   │   └── __init__.py
 │   │       │   └── __init__.py
-│   │       └── okf/                   # OKF 역할 (신규, SQL/longmemeval 패턴 참조)
+│   │       └── okf/                   # OKF 역할 (Phase 2 완료)
 │   │           ├── action_space.py
 │   │           ├── eval.py
 │   │           ├── outcome.py
@@ -136,22 +142,25 @@ brick-agent/
 │   │   ├── compiler.py
 │   │   └── __init__.py
 │   │
-│   ├── runtime/                       # runtime glue (계약 로딩 + 공통 서비스)
-│   │   ├── loader.py                  # behaviors.yaml → ActiveGraph 런타임에 메타데이터 로드
+│   ├── runtime/                       # runtime glue (계약 로딩 + 공통 서비스 + 관측)
+│   │   ├── loader.py                  # behaviors.spec.yaml → ActiveGraph 런타임에 handler 바인딩
 │   │   ├── reader_registry.py         # 질문/요청별 Reader 인스턴스 관리
 │   │   ├── embedder.py                # core.agent.embedders 재노출 또는 wrapper
-│   │   ├── history_logger.py          # runtime 연산을 .okf/*/history.yaml에 기록
+│   │   ├── history_logger.py          # runtime 연산을 .okf/*/history.yaml에 기록 (canonical op 이름)
 │   │   ├── guardrails.py              # config/agent_model/guardrails.yaml 적용
+│   │   ├── event_store.py             # SQLiteEventStore + Runtime.load/fork 재생 (Phase 5)
+│   │   ├── observability.py           # llm.* emit 헬퍼 + 구조화 로깅/OTel (Phase 5)
+│   │   ├── replay.py                  # llm 응답 캐시 기반 결정적 재실험 (Phase 5)
 │   │   └── __init__.py
 │   │
 │   ├── agents/                        # 역할별 behavior 래퍼/진입점
-│   │   ├── router.py                  # REQUEST_RECEIVED → REQUEST_CLASSIFIED
-│   │   ├── super_agent.py             # 최상위 CLI/API
+│   │   ├── router.py                  # request.received → request.classified
+│   │   ├── brick_agent.py            # 최상위 CLI/API (--store/--trace 옵션)
 │   │   ├── sql/
 │   │   │   ├── behaviors.py           # core.targets.sql.agent.behaviors 재사용/래핑
 │   │   │   └── __init__.py
 │   │   ├── okf/
-│   │   │   ├── behaviors.py           # OKF 전용 behavior 정의
+│   │   │   ├── behaviors.py           # OKF 전용 behavior 정의 (Phase 3)
 │   │   │   └── __init__.py
 │   │   └── mentor/
 │   │       ├── behaviors.py           # core.loop.behaviors 재사용/래핑
@@ -162,31 +171,28 @@ brick-agent/
 │       └── okf_visualizer.py
 │
 ├── config/
-│   ├── agent_model/                   # 선언적 계약 (YAML)
+│   ├── agent_model/                   # 파생 설정 (canonical은 .okf/00_agent_model/)
 │   │   ├── manifest.yaml
-│   │   ├── events.yaml
-│   │   ├── objects.yaml
-│   │   ├── edges.yaml
-│   │   ├── behaviors.yaml             # OKF 컴파일러가 생성 (handler 참조 포함)
-│   │   ├── guardrails.yaml
+│   │   ├── guardrails.yaml            # required_lint_before_ask 포함
 │   │   ├── caching.yaml
 │   │   ├── workflows/
 │   │   │   ├── sql_workflow.yaml
 │   │   │   ├── okf_workflow.yaml
 │   │   │   └── mentor_workflow.yaml
-│   │   └── history.yaml               # 모델 계약 변경 이력
+│   │   └── history.yaml               # 모델 계약 변경 이력 (canonical과 동기화)
 │   └── targets/                       # 역할별 타겟 설정
 │       ├── sql_target.yaml
 │       └── okf_target.yaml
 │
 ├── .okf/                              # 기존 OKF 지식베이스 (또는 knowledge/)
-│   ├── 00_agent_model/
+│   ├── 00_agent_model/                # canonical 계약: events.yaml, behaviors.spec.yaml,
+│   │                                  #   concepts/observability.md, history.yaml
 │   ├── 01_nano_vllm/
 │   ├── 02_store_front/
 │   ├── index.md
 │   └── log.md
 │
-├── data/      # SQLite DB folder
+├── data/      # SQLite DB folder (EventStore run.db 포함)
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -197,203 +203,187 @@ brick-agent/
 
 ---
 
-## 4. `behaviors.yaml`과 Python Handler 연결
+## 4. `behaviors.spec.yaml`과 Python Handler 연결
 
-`behaviors.yaml`에는 이제 **실행 코드가 아닌 handler 참조**가 들어갑니다.
+**Canonical 행동 스펙은 `.okf/00_agent_model/behaviors.spec.yaml`** 이며, 여기에는 **실행 코드가 아닌 handler 참조**가 들어갑니다.
+(컴파일러가 생성하는 `.okf/00_agent_model/behaviors.yaml`은 지식 그래프 노드용 Cypher 패턴으로, 런타임 행동 스펙과 구분됩니다.)
 
 ```yaml
 behaviors:
   - name: sql_agent.encode_schema
     role: sql
-    subscribes_to: sql.question.asked
-    emits: sql.schema.encoded
-    handler: agents.sql.behaviors::encode_schema   # Python 모듈 참조
+    subscribes_to: [question.asked]
+    emits: schema.encoded
+    handler: src.core.targets.sql.agent.behaviors::behavior_encode_schema
 
   - name: okf_agent.ingest
     role: okf
-    subscribes_to: okf.ingest.requested
-    emits: okf.ingested
-    handler: agents.okf.behaviors::ingest
+    subscribes_to: [okf.ingest.requested]
+    emits: [okf.parsed, okf.validated, okf.loaded]
+    handler: src.agents.okf.behaviors::ingest
 
-  - name: mentor.observe
-    role: mentor
-    subscribes_to: [sql.evaluated, okf.answer.generated]
-    emits: mentor.analyze
-    handler: agents.mentor.behaviors::observe
+  - name: okf_agent.generate_answer
+    role: okf
+    subscribes_to: [okf.context.assembled]
+    emits: okf.answer.generated
+    handler: src.agents.okf.behaviors::generate_answer
+    observability:
+      emits_llm_events: required   # reader.answer() → llm.requested/llm.responded
 ```
 
 - `runtime/loader.py`는 이 `handler` 참조를 읽어 ActiveGraph 런타임에 **실제 Python 함수를 바인딩**합니다.
-- SQL과 Mentor의 handler는 대부분 `core.targets.sql.agent.behaviors`와 `core.loop.behaviors`에서 가져옵니다.
-- OKF handler만 신규로 구현하면 됩니다.
+- SQL과 Mentor의 handler는 대부분 `src.core.targets.sql.agent.behaviors`와 `src.core.loop.behaviors`에서 가져옵니다.
+- OKF handler만 신규로 구현하면 됩니다 (Phase 3).
 
 ---
 
-Below is the updated **work-breakdown plan** for developing the **Brick‑Agent** (super‑agent) with a coding agent. It assumes the following existing components are reusable:
+Below is the updated **work-breakdown plan** for completing the **brick.agent** with a coding agent. **Phases 1–2 are ✅ COMPLETED** (SQL pipeline + OKF target + 20 tests passing). It assumes the following existing components are reusable:
 
 - `src/core/agent/` – shared runtime, embeddings, transforms
 - `src/core/eval/` – evaluation abstraction
 - `src/core/loop/` – mentor loop (self‑improvement)
 - `src/core/targets/sql/` – complete text‑to‑SQL role
-- `src/core/targets/longmemeval/` – pattern reference for OKF role
+- `src/core/targets/okf/` – **completed OKF role** (Phase 2)
 - `src/okf/` – existing OKF compiler, validator, IR, history
+- `.okf/00_agent_model/` – canonical contracts: `events.yaml`, `behaviors.spec.yaml`, `concepts/observability.md`
 - `src/tools/` – link checker and visualizer
 
-The remaining work is to **add the OKF role, integrate a request router, build runtime glue, and connect everything** into a unified super brick‑agent.
+The remaining work is to **build OKF runtime behaviors, runtime glue, the observability layer, the request router, mentor integration, and end‑to‑end packaging** of the brick.agent.
 
 ---
 
 ## Work Breakdown Plan
 
-### Phase 1: Validate and Understand Existing Core (No Code Changes)
+### Phase 1: Validate and Understand Existing Core — ✅ COMPLETED
 
 **Goal:** Ensure the imported `regimes` core works in the new repository.
 
-- **Task 1.1:** Run existing tests (if any) for `src/core/agent/`, `src/core/loop/`, `src/core/targets/sql/`.
-- **Task 1.2:** Create a minimal test script that:
-  - Builds a `SqlTarget` using `src/core/targets/sql/target.py`.
-  - Runs a simple SQL question with a `FakeReader` (or dummy Reader).
-  - Confirms the event chain `question.asked → … → query.drafted` executes correctly.
-- **Task 1.3:** Verify that the OKF compiler still works on the current `.okf/` bundles and produces `behaviors.yaml`.
+- **Task 1.1:** Run existing tests for `src/core/agent/`, `src/core/loop/`, `src/core/targets/sql/`. — ✅ done (`tests/test_core_imports_and_sql_smoke.py` passing)
+- **Task 1.2:** Create a minimal test script that builds a `SqlTarget` and confirms the event chain `question.asked → … → query.drafted`. — ✅ done
+- **Task 1.3:** Verify that the OKF compiler still works on the current `.okf/` bundles and produces `behaviors.yaml`. — ✅ done
 
-**Acceptance:** Core SQL pipeline and OKF compiler are functional in the new structure.
+**Acceptance:** Core SQL pipeline and OKF compiler are functional in the new structure. — ✅ MET
 
 ---
 
-### Phase 2: Design the OKF Target (New Code)
+### Phase 2: Design the OKF Target (New Code) — ✅ COMPLETED
 
 **Goal:** Create a complete `src/core/targets/okf/` package that mirrors the SQL target structure but for OKF knowledge.
 
-- **Task 2.1:** Define `outcome.py` – a dataclass `OkfOutcome` containing:
-  - `question_id`, `question`, `answer`, `context_parts` (concepts, rules, schema used), `applied_transforms`, `lint_errors`, `correct` (optional).
-- **Task 2.2:** Define `taxonomy.py` – deterministic detectors for OKF structural integrity, e.g.:
-  - `concept_orphan_detector`
-  - `rule_schema_reference_detector`
-  - `ambiguous_trigger_detector`
-  - `cyclic_concept_detector`
-  - These produce signals used by lint and evaluation.
-- **Task 2.3:** Define `action_space.py` – encapsulates the OKF ask pipeline:
-  - `OkfActionSpace` with a `build_prompt_parts(question, relevant_context)` method.
-  - Uses `prompt_transforms` pipeline to modify prompt parts.
-- **Task 2.4:** Define `prompt_transforms.py` – transforms specific to OKF ask, e.g.:
-  - `inject_concept_tree` – add parent/child concepts to context
-  - `inject_rules` – add applicable rules
-  - `trim_context` – limit context length
-- **Task 2.5:** Define `eval.py` – evaluation backend for OKF answers:
-  - Compares generated answer against ground truth or checks rule adherence.
-  - Returns correctness and signals.
-- **Task 2.6:** Define `target.py` – `build_target` constructor that wires `OkfActionSpace`, `OkfTaxonomy`, and `OkfEvalBackend`.
+- **Task 2.1:** `outcome.py` – `OkfOutcome` (`question_id`, `question`, `answer`, `context_parts`, `applied_transforms`, `lint_errors`, `correct` optional). — ✅ done
+- **Task 2.2:** `taxonomy.py` – deterministic detectors: `concept_orphan_detector`, `rule_schema_reference_detector`, `ambiguous_trigger_detector`, `cyclic_concept_detector` + `OkfTaxonomy`. — ✅ done
+- **Task 2.3:** `action_space.py` – `OkfActionSpace.build_prompt_parts(question, relevant_context)` + prompt-transforms pipeline. — ✅ done
+- **Task 2.4:** `prompt_transforms.py` – `inject_concept_tree`, `inject_rules`, `trim_context`. — ✅ done
+- **Task 2.5:** `eval.py` – evaluation backend (gold-answer match or rule adherence) returning correctness + signals. — ✅ done
+- **Task 2.6:** `target.py` – `build_target` wiring `OkfActionSpace`, `OkfTaxonomy`, `OkfEvalBackend`. — ✅ done
 
-**Acceptance:** A new OKF target exists and can be instantiated with a dummy knowledge base.
+**Acceptance:** A new OKF target exists and can be instantiated with a '01_nano_vllm' knowledge base. — ✅ MET (`build_target(kb="01_nano_vllm")`; 20/20 tests passing under `.wenv`)
 
 ---
 
 ### Phase 3: Build OKF Runtime Behaviors (New Code)
 
-**Goal:** Implement event-driven behaviors for OKF ingest, lint, and ask using the `@behavior` decorator.
+**Goal:** Implement event-driven behaviors for OKF ingest, lint, and ask using the `@behavior` decorator, with event names from the canonical `events.yaml`.
 
-- **Task 3.1:** Create `src/agents/okf/behaviors.py`.
+- **Task 3.1:** Create `src/agents/okf/behaviors.py` (event constants imported from canonical `events.yaml`).
 - **Task 3.2:** Implement `okf_agent.ingest` behavior:
-  - Triggered by `OKF_INGEST_REQUESTED`.
-  - Reads the compiled OKF graph data (from `src/okf/ir.py` or a snapshot file) and populates ActiveGraph objects:
+  - Triggered by `okf.ingest.requested`.
+  - Reuses `src/core/targets/okf/taxonomy.load_knowledge_graph()` (Phase 2 — body relationship parser 포함) to build the graph snapshot, then populates ActiveGraph objects:
     - `concept` nodes, `rule` nodes, `schema_table`, `schema_column` nodes.
-    - Relations: `concept_child`, `maps_to_column`, `uses_rule`, etc.
-  - Emits `OKF_INGESTED` with summary counts.
+    - Relations: `concept_child`, `maps_to_column`, `uses_rule`, `rule_references_schema`, etc.
+  - Emits `okf.parsed` → `okf.validated` → `okf.loaded` with summary counts.
 - **Task 3.3:** Implement `okf_agent.lint` behavior:
-  - Triggered by `OKF_LINT_REQUESTED`.
-  - Runs validators from `src/core/targets/okf/taxonomy.py`.
-  - Emits `OKF_LINTED` with issues list and validity flag.
+  - Triggered by `okf.lint.requested`.
+  - Runs `lint_knowledge_graph()` from `src/core/targets/okf/taxonomy.py` (4 detectors).
+  - Emits `okf.analyzed` → `okf.linted` with issues list and validity flag.
 - **Task 3.4:** Implement `okf_agent.assemble_context` behavior:
-  - Triggered by `OKF_ASK_REQUESTED`.
-  - Uses embedder to retrieve top‑K relevant concepts/rules.
+  - Triggered by `okf.ask.requested`.
+  - Uses embedder to retrieve top‑K relevant concepts/rules (embedder 호출은 `tool.requested/responded` emit 허용).
   - Expands concept tree (parents, children).
   - Retrieves mapped schema objects.
-  - Emits `OKF_CONTEXT_ASSEMBLED` with structured `context_parts`.
+  - Emits `okf.context.assembled` with structured `context_parts` (concepts/rules/schema/relations).
 - **Task 3.5:** Implement `okf_agent.generate_answer` behavior:
-  - Triggered by `OKF_CONTEXT_ASSEMBLED`.
-  - Calls `OkfActionSpace.build_prompt_parts` then `prompt_transforms.apply_pipeline`.
-  - Renders final prompt and calls `Reader.answer()`.
-  - Emits `OKF_ANSWER_GENERATED` with answer and applied transforms.
+  - Triggered by `okf.context.assembled`.
+  - Calls `OkfActionSpace.build_prompt_parts(question, context_parts)` — **파이프라인은 내부에서 실행됨** (`OkfPrompt.parts` + `applied_transforms` 반환) → `render_okf_prompt()`으로 최종 프롬프트 생성.
+  - **LLM seam (observability)**: `reader.answer()` 호출을 `llm.requested` / `llm.responded` 이벤트로 감싼다 (model, prompt_hash, cost_usd, cache_hit, latency_seconds — 계약: `concepts/observability.md` §3.2).
+  - Emits `okf.answer.generated` with answer, context_parts, applied transforms.
 
-**Acceptance:** A test can trigger `OKF_ASK_REQUESTED` and receive a grounded response from a fake reader.
+**Acceptance:** A test can trigger `okf.ask.requested` and receive a grounded response from a fake reader; the run log contains `llm.requested`/`llm.responded` for the answer call.
 
 ---
 
-### Phase 4: Build Runtime Services and Glue
+### Phase 4: Build Runtime Services and Glue — ✅ COMPLETED
 
 **Goal:** Create support modules that connect OKF compiler output with ActiveGraph and manage shared resources.
 
-- **Task 4.1:** Create `src/runtime/` package.
+- **Task 4.1:** Create `src/runtime/` package. — ✅ done
 - **Task 4.2:** Implement `reader_registry.py`:
   - Process‑level dictionary keyed by `question_id`/`request_id`.
-  - Functions: `set_reader`, `get_reader`, `clear_reader`.
+  - Functions: `set_reader`, `get_reader`, `clear_reader`, `clear_all_readers`, `call_reader` (timing + error capture).
+  - Reader 호출 래퍼는 Phase 5의 `llm.*` emit 헬퍼와 결합.
+  - SQL·OKF behaviors가 공유 레지스트리를 사용하도록 전환 완료.
 - **Task 4.3:** Implement `embedder.py`:
   - Thin wrapper around `core.agent.embedders`.
-  - Expose `embed(texts)` returning L2‑normalised vectors.
+  - Expose `embed(texts)` / `embed_one` / `cosine_similarity` / `rank_by_similarity` (L2‑normalised).
 - **Task 4.4:** Implement `history_logger.py`:
-  - Appends runtime operations (e.g., `MENTOR_APPLY`, `OPTIMIZE_PROMPT`) to the appropriate `.okf/*/history.yaml`.
+  - Appends runtime operations (`ADD_BEHAVIOR`, `REWIRE_BEHAVIOR`, `OPTIMIZE_PROMPT`, `ADD_EVENT_TYPE`, `ADD_DOC`, `ADD_GUARDRAIL`, …) to the appropriate `.okf/*/history.yaml` (canonical operator names; non-canonical ops rejected).
 - **Task 4.5:** Implement `guardrails.py`:
-  - Loads rules from `config/agent_model/guardrails.yaml`.
-  - Provides functions to check SQL safety, OKF lint requirements, mentor thresholds.
+  - Loads rules from `config/agent_model/guardrails.yaml` (생성 완료) — defaults merge over built-ins.
+  - Includes **`okf.required_lint_before_ask: true`**; provides `check_sql_safety`, `check_okf_lint_before_ask`, `check_mentor_promotion`.
 - **Task 4.6:** Implement `loader.py`:
-  - Ingests the compiled OKF graph (from `src/okf/ir.py` or a pre‑compiled JSON).
-  - Populates ActiveGraph with nodes/relations.
-  - Provides a function to build the initial graph for a session.
+  - `load_kb_graph` (Phase 2 `load_knowledge_graph` 재사용), `populate_graph` (ActiveGraph objects/relations), `build_session` (세션 초기 그래프).
 
-**Acceptance:** All runtime services have unit tests.
+**Acceptance:** All runtime services have unit tests. — ✅ MET (`tests/test_runtime_services.py`, 15 tests)
 
 ---
 
-### Phase 5: Request Router and Super‑Agent Entry Point
+### Phase 5: Observability & Event-Sourcing Persistence — ✅ COMPLETED
+
+**Goal:** Make the event log the LLM observability store: durable, replayable, and cost/latency-visible.
+
+- **Task 5.1:** `src/runtime/event_store.py` — SQLiteEventStore(`persist_to`) + run metadata (`list_runs`, `run_events`), store close hygiene. — ✅ done
+- **Task 5.2:** `src/runtime/observability.py` — `llm.requested`/`llm.responded` emit 헬퍼 (`ask_with_observability`), `configure_logging`, `causal_chain_text`. — ✅ done
+- **Task 5.3:** `src/runtime/replay.py` — `build_replay_cache`(prompt_hash→answer), `ReplayReader`(결정적 재생), `replay_into_graph`, `Runtime.load` 래퍼. — ✅ done
+- **Task 5.4:** SQL `draft_query` — `reader.answer()`를 `llm.*` observability seam으로 래핑. — ✅ done
+- SQL/OKF agent entrypoints에 `store_path`(persist_to) 배선 + run별 unique run_id. — ✅ done
+
+**Acceptance:** 모든 LLM 호출이 로그에 남고(model·prompt_hash·answer·latency), 저장된 run을 재생할 수 있으며, replay cache가 기록된 답변을 결정적으로 서빙한다. — ✅ MET (`tests/test_phase5_observability.py`)
+
+---
+
+### Phase 6: Request Router and brick.agent Entry Point — ✅ COMPLETED
 
 **Goal:** Provide a single interface that classifies requests and dispatches to the correct role.
 
-- **Task 5.1:** Create `src/agents/router.py`:
-  - Subscribes to `REQUEST_RECEIVED`.
-  - Uses embeddings or a lightweight LLM call to classify the request into:
-    - `sql` – ask a database query.
-    - `okf_ingest` – ingest new knowledge.
-    - `okf_lint` – lint knowledge base.
-    - `okf_ask` – ask about OKF knowledge.
-    - `mentor_status` – show learning status.
-  - Emits `REQUEST_CLASSIFIED` with the role and original payload.
-- **Task 5.2:** Create `src/agents/super_agent.py`:
-  - Main CLI entry point.
-  - Initialises ActiveGraph runtime with all behaviors (SQL, OKF, Mentor, Router).
-  - Registers a Reader instance for each request.
-  - Emits `REQUEST_RECEIVED` to start the chain.
-  - Provides subcommands: `ask`, `ingest`, `lint`, `mentor`.
-- **Task 5.3:** Ensure that the router can also trigger cross‑role flows (e.g., an OKF ask that requires SQL data).
+- **Task 6.1:** `src/agents/router.py` — `classify()` (결정적 키워드 + 임베딩 폴백). — ✅ done
+- **Task 6.2:** `src/agents/brick_agent.py` CLI — subcommands `ask sql` / `ask okf` / `ask`(router) / `ingest` / `lint` / `db seed` / `mentor status`, `--store`/`--trace`/`--real`, Reader demo/real 자동 선택. — ✅ done
+- **Task 6.3:** Cross-role flow — OKF ask에서 SQL splice는 추후(Phase 8); 개별 역할 체인은 CLI로 독립 실행 가능. — ✅ (개별 Q&A)
 
-**Acceptance:** Running `python -m src.agents.super_agent ask sql "..."` returns a SQL query; `... okf ask "..."` returns an OKF answer; `... mentor status` shows learning status.
+**Acceptance:** `python -m src.agents.brick_agent ask sql "..."` returns a SQL query; `... okf ask "..."` returns an OKF answer; `... mentor status` shows learning status; `--trace` renders the LLM observability trail. — ✅ MET (`tests/test_brick_cli.py` + live CLI)
 
 ---
 
-### Phase 6: Mentor Integration (Adapt Existing Loop)
+### Phase 7: Mentor Integration (Adapt Existing Loop) — ✅ COMPLETED
 
-**Goal:** Ensure the existing self‑improvement loop can handle both SQL and OKF outcomes.
+**Goal:** Ensure the existing self‑improvement loop can handle both SQL and OKF outcomes — and observe LLM cost/latency.
 
-- **Task 6.1:** Review `src/core/loop/` to understand where regime classification and hypothesis generation happen.
-- **Task 6.2:** Modify `loop/regimes.py` or `loop/hypothesize.py` (if necessary) to include OKF failure regimes, e.g.:
-  - `wrong_concept_selected`
-  - `missing_rule`
-  - `context_too_broad`
-- **Task 6.3:** Ensure the mentor observes both `SQL_EVALUATED` and `OKF_ANSWER_GENERATED` events.
-- **Task 6.4:** Test that the mentor can propose a prompt transform after a series of SQL failures and that the transform is applied to subsequent SQL prompts.
+- **Task 7.1:** Review `src/core/loop/` to understand where regime classification and hypothesis generation happen. — ✅ done (loop은 target-agnostic; OKF/SQL target이 모든 seam 충족)
+- **Task 7.2:** Map mentor diagnosis onto the **implemented `OkfTaxonomy`** regimes (`concept-cycle`, `rule-schema-mismatch`, `concept-orphan`, `ambiguous-trigger`, `unclassified`) — 병렬 택소노미 없이 기존 사용. 신규 실패 클러스터는 `OkfTaxonomy.register_regime`으로 추가 (예: `wrong-concept-selected`). — ✅ done + 테스트
+- **Task 7.3:** Mentor observes `sql.evaluated` / `okf.answer.generated` (canonical) **plus `llm.responded`** — `observability.summarize_llm_usage(store)`로 LLM 호출 수·평균 지연·에러 집계, `mentor status`에 출력. — ✅ done
+- **Task 7.4:** SQL 실패 시리즈 → mentor가 prompt transform 제안 → 검증 → 적용 → 이후 프롬프트가 개선본 사용. — ✅ done (테스트로 입증)
 
-**Acceptance:** A simulated failure run results in a mentor‑proposed improvement that is validated and applied, and the next run uses the improved prompt.
+**Acceptance:** A simulated failure run results in a mentor‑proposed improvement that is validated (deterministic replay via Phase 5 — `ReplayReader`가 기록된 답변을 재호출 없이 서빙) and applied, and the next run uses the improved prompt. — ✅ MET (`tests/test_mentor_loop.py`)
 
 ---
 
-### Phase 7: Integration, Testing, and Documentation
+### Phase 8: Integration, Testing, and Documentation — ✅ COMPLETED
 
-**Goal:** End‑to‑end validation and packaging.
+**Goal:** End‑to‑end validation, KB integrity, and packaging.
 
-- **Task 7.1:** Write integration tests that cover:
-  - SQL query generation.
-  - OKF ingest → lint → ask.
-  - Mentor learning cycle on a small dataset.
-- **Task 7.2:** Update existing OKF visualizer/link checker to work with the extended graph (if needed).
-- **Task 7.3:** Create `README.md` with architecture, setup instructions, and usage examples.
-- **Task 7.4:** Add a `Makefile` or `pyproject.toml` scripts for common commands.
+- **Task 8.1:** Integration tests — SQL query generation, OKF ingest → lint → ask (lint-before-ask guardrail), observability (llm.* events + stored-run replay identical). — ✅ done (`tests/test_phase8_integration.py`)
+- **Task 8.2:** Fix the concept cycles / dangling refs / one-sided relationships / noise / missing evidence in `.okf/01_nano_vllm` and re-run lint until clean. — ✅ done (`src/tools/okf_repair.py`, 멱등): 106 → **0 issues** (`valid=True n_errors=0`, `okf_validate.py` 0 errors), `log.md`에 기록
+- **Task 8.3:** Update visualizer/link checker for the extended graph. — ✅ (body 관계 블록은 `dangling_reference_detector`가 담당; `okf_link_check`는 frontmatter 기준으로 동작 확인)
+- **Task 8.4:** `README.md` — 실제 구현 기준 전면 개편 (Phase 1–8 상태, CLI, 관측, KB 감사 현황). — ✅ done
+- **Task 8.5:** `Makefile` — test / seed / ask-sql / ask-okf / ingest / lint / mentor-status / repair / validate. — ✅ done
 
-**Acceptance:** All tests pass; a new user can follow the README to run the super‑agent.
+**Acceptance:** All tests pass; `okf lint` is clean; a new user can follow the README to run the brick.agent and inspect any answer's causal chain and LLM cost. — ✅ MET (**69/69 tests**, lint 0건, README/user-manual/Makefile 완비)

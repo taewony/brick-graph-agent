@@ -58,12 +58,12 @@ Module 6은 이 인프라 위에 **Content-Addressable Memory(내용 기반 주�
 
 ## 🏗️ 복합 개념 (Composite Concept)
 
-- `composite.prefix_cache_manager` — Content-Addressable Block System 전체를 통합 관리하는 프리픽스 캐시 관리자
+- [`composite.prefix_cache_manager`](../02_composite/caching_strategy.md) — Content-Addressable Block System 전체를 통합 관리하는 프리픽스 캐시 관리자
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `memory_pool`, `block_manager`, `paged_kv_cache`
-- **PREREQUISITE_OF**: `distributed_serving` (Module 7)
+- **PREREQUISITES**: [`memory_pool`](../03_atomic/memory_pool.md), [`block_manager`](../02_composite/block_manager.md), [`paged_kv_cache`](../03_atomic/paged_kv_cache.md)
+- **PREREQUISITE_OF**: [`composite.distributed_serving`](../02_composite/distributed_serving_system.md) (Module 7)
 
 ---
 

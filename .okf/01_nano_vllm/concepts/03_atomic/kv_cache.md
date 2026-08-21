@@ -6,10 +6,20 @@ description: 자기회귀 생성 과정에서 이전 스텝 토큰들의 Key, Va
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-05T13:15:00Z
+  at: 2026-08-05 13:15:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-05T13:15:00Z
+- by: human:curator
+  at: 2026-08-05 13:15:00+00:00
+sources:
+- id: vllm-paper
+  resource: https://arxiv.org/abs/2209.06155
+  title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
+prerequisite_of:
+- atomic.continuous_batching
+- atomic.distributed_kv
+- atomic.memory_pool
+- atomic.prefix_cache
+- composite.serving_system
 ---
 
 # Key-Value Cache (KV 캐시)
@@ -32,9 +42,9 @@ KV Cache가 없을 경우 $t$번째 토큰을 생성할 때 1부터 $t-1$번째 
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITES**:
-  - `prefill_phase`
-  - `decode_phase`
+  - [`prefill_phase`](prefill_phase.md)
+  - [`decode_phase`](decode_phase.md)
 - **PREREQUISITE_OF**:
-  - `autoregressive_loop`
-  - `static_kv_cache` (Module 02)
-  - `paged_kv_cache` (Module 04)
+  - [`autoregressive_loop`](../02_composite/autoregressive_loop.md)
+  - [`static_kv_cache`](static_kv_cache.md) (Module 02)
+  - [`paged_kv_cache`](paged_kv_cache.md) (Module 04)

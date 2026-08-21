@@ -105,15 +105,15 @@ behaviors:
 
     RETURN c'
   handler: handle_okf-graph_agent_model_assembled
-- behavior_id: behavior.super_agent_model
-  target_node: super.agent.model
+- behavior_id: behavior.brick_agent_model
+  target_node: brick.agent.model
   trigger_event: GRAPH_COMPILED
-  cypher_pattern: 'MATCH (c:Concept {id: ''super.agent.model''})
+  cypher_pattern: 'MATCH (c:Concept {id: ''brick.agent.model''})
 
     WHERE all(p IN [(p:Concept)-[:PREREQUISITE_OF]->(c) | p] WHERE p.status = ''mastered'')
 
     RETURN c'
-  handler: handle_super_agent_model_assembled
+  handler: handle_brick_agent_model_assembled
 - behavior_id: behavior.text-to-sql_agent_model
   target_node: text-to-sql.agent.model
   trigger_event: GRAPH_COMPILED
@@ -351,11 +351,11 @@ graph_nodes_by_bundle:
     path: 00_agent_model/examples/okf-graph.agent.model.md
     prerequisites: []
     composed_of: []
-  - id: super.agent.model
-    title: super.agent.model
+  - id: brick.agent.model
+    title: brick.agent.model
     type: Concept
     status: draft
-    path: 00_agent_model/examples/super.agent.model.md
+    path: 00_agent_model/examples/brick.agent.model.md
     prerequisites: []
     composed_of: []
   - id: text-to-sql.agent.model

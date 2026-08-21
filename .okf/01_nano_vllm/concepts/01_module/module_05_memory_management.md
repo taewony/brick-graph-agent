@@ -39,19 +39,19 @@ Module 4의 PagedAttention이 **논리-물리 주소 분리**라는 혁신적 �
 
 ## 🧩 포함 원자적 개념
 
-- `atomic.memory_pool` — GPU 메모리를 고정 크기 블록들의 풀(Pool)로 추상화
-- `atomic.block_allocator` — 블록 할당 및 해제를 담당하는 정책 (First-Fit, Best-Fit, Next-Fit)
-- `atomic.swap_manager` — GPU 메모리 부족 시 블록을 CPU 메모리로 스왑아웃/스왑인하는 관리자
+- [`atomic.memory_pool`](../03_atomic/memory_pool.md) — GPU 메모리를 고정 크기 블록들의 풀(Pool)로 추상화
+- [`atomic.block_allocator`](../03_atomic/block_allocator.md) — 블록 할당 및 해제를 담당하는 정책 (First-Fit, Best-Fit, Next-Fit)
+- [`atomic.swap_manager`](../03_atomic/swap_manager.md) — GPU 메모리 부족 시 블록을 CPU 메모리로 스왑아웃/스왑인하는 관리자
 - `atomic.swap_policy` — 스와핑 대상 선정 정책 (LRU, LFU, FIFO 등)
 
 ## 🏗️ 복합 개념 (Composite Concept)
 
-- `composite.block_manager` — Memory Pool + Block Allocator + Swap Manager를 통합한 최상위 블록 관리자
+- [`composite.block_manager`](../02_composite/block_manager.md) — Memory Pool + Block Allocator + Swap Manager를 통합한 최상위 블록 관리자
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `paged_kv_cache`, `block_table`
-- **PREREQUISITE_OF**: `distributed_serving` (Module 7)
+- **PREREQUISITES**: [`paged_kv_cache`](../03_atomic/paged_kv_cache.md), [`block_table`](../03_atomic/block_table.md)
+- **PREREQUISITE_OF**: [`composite.distributed_serving`](../02_composite/distributed_serving_system.md) (Module 7)
 
 ---
 

@@ -2,29 +2,31 @@
 type: CompositeConcept
 id: composite.serving_system
 title: vLLM 통합 서빙 시스템 (Serving System)
-description: Continuous Batching(Module 3)과 PagedAttention(Module 4)이 결합된 vLLM의 핵심 서빙 아키텍처로, GPU 계산 효율과 메모리 효율을 동시에 최적화하여 10~23배의 처리량 향상을 달성
+description: Continuous Batching(Module 3)과 PagedAttention(Module 4)이 결합된 vLLM의 핵심
+  서빙 아키텍처로, GPU 계산 효율과 메모리 효율을 동시에 최적화하여 10~23배의 처리량 향상을 달성
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-06T09:00:00Z
+  at: 2026-08-06 09:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-06T09:00:00Z
+- by: human:curator
+  at: 2026-08-06 09:00:00+00:00
 components:
-  - atomic.continuous_batching
-  - atomic.iteration_level_scheduling
-  - atomic.paged_kv_cache
-  - atomic.block_table
-  - atomic.slot_mapping
-  - composite.paged_attention_manager
+- atomic.continuous_batching
+- atomic.iteration_level_scheduling
+- atomic.paged_kv_cache
+- atomic.block_table
+- atomic.slot_mapping
+- composite.paged_attention_manager
 prerequisites:
-  - module.continuous_batching
-  - module.paged_attention
-  - atomic.kv_cache
+- atomic.kv_cache
+- composite.dynamic_batcher
+- module.continuous_batching
+- module.paged_attention
 sources:
-  - id: original_lab
-    resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ#Module-4
-    title: "nano-vLLM Module 4: PagedAttention - The Logical Abstraction"
+- id: original_lab
+  resource: https://hackmd.io/9Ivogn3dRwm3WgA4Kl3fJQ#Module-4
+  title: 'nano-vLLM Module 4: PagedAttention - The Logical Abstraction'
 ---
 
 # vLLM 통합 서빙 시스템 (Serving System)
@@ -98,12 +100,12 @@ sources:
 
 | 구성 요소 | 출처 | 역할 |
 |---|---|---|
-| `atomic.continuous_batching` | Module 3 | 매 Iteration마다 배치를 새롭게 구성 |
-| `atomic.iteration_level_scheduling` | Module 3 | 요청 단위가 아닌 Iteration 단위 스케줄링 |
-| `atomic.paged_kv_cache` | Module 4 | KV Cache를 고정 블록으로 분할 |
-| `atomic.block_table` | Module 4 | 논리→물리 주소 매핑 |
-| `atomic.slot_mapping` | Module 4 | 토큰 위치 → 블록 내 슬롯 변환 |
-| `composite.paged_attention_manager` | Module 4 | 블록 할당/해제/매핑 총괄 |
+| [`atomic.continuous_batching`](../03_atomic/continuous_batching.md) | Module 3 | 매 Iteration마다 배치를 새롭게 구성 |
+| [`atomic.iteration_level_scheduling`](../03_atomic/iteration_level_scheduling.md) | Module 3 | 요청 단위가 아닌 Iteration 단위 스케줄링 |
+| [`atomic.paged_kv_cache`](../03_atomic/paged_kv_cache.md) | Module 4 | KV Cache를 고정 블록으로 분할 |
+| [`atomic.block_table`](../03_atomic/block_table.md) | Module 4 | 논리→물리 주소 매핑 |
+| [`atomic.slot_mapping`](../03_atomic/slot_mapping.md) | Module 4 | 토큰 위치 → 블록 내 슬롯 변환 |
+| [`composite.paged_attention_manager`](paged_attention_manager.md) | Module 4 | 블록 할당/해제/매핑 총괄 |
 
 ---
 
@@ -144,7 +146,7 @@ sources:
 [Module 5+] memory_pool, prefix_cache, distributed_serving (고급 최적화)
 ```
 
-> 💡 **최종 인사이트**: `serving_system`은 단순히 두 모듈을 합친 것이 아닙니다. Scheduler와 Block Manager가 실시간으로 메모리 상태를 주고받으며 **배치 구성을 최적화**하는 **유기적 협업 시스템**입니다. 이 통합이 바로 vLLM이 다른 엔진과 차별화되는 결정적 요인입니다.
+> 💡 **최종 인사이트**: [`serving_system`](serving_system.md)은 단순히 두 모듈을 합친 것이 아닙니다. Scheduler와 Block Manager가 실시간으로 메모리 상태를 주고받으며 **배치 구성을 최적화**하는 **유기적 협업 시스템**입니다. 이 통합이 바로 vLLM이 다른 엔진과 차별화되는 결정적 요인입니다.
 > **Continuous Batching (계산 효율)** 과 **PagedAttention (메모리 효율)** 이 결합되어 vLLM의 완전한 서빙 엔진을 구성하는 방식을 계층적으로 설명합니다.
 
 # PagedAttention Block Manager (페이지드 어텐션 블록 관리자)
@@ -163,9 +165,9 @@ sources:
 
 | 구성 요소 | 설명 |
 |---|---|
-| `atomic.paged_kv_cache` | KV Cache를 고정 크기 블록(예: 16 tokens) 단위로 물리적 메모리에 분산 저장 |
-| `atomic.block_table` | 각 Sequence별로 `Logical Block ID → Physical Block ID`를 매핑하는 테이블 |
-| `atomic.slot_mapping` | 특정 토큰 위치(`token_position`)를 `(physical_block_id, slot_index)` 쌍으로 변환하는 계산기 |
+| [`atomic.paged_kv_cache`](../03_atomic/paged_kv_cache.md) | KV Cache를 고정 크기 블록(예: 16 tokens) 단위로 물리적 메모리에 분산 저장 |
+| [`atomic.block_table`](../03_atomic/block_table.md) | 각 Sequence별로 `Logical Block ID → Physical Block ID`를 매핑하는 테이블 |
+| [`atomic.slot_mapping`](../03_atomic/slot_mapping.md) | 특정 토큰 위치(`token_position`)를 `(physical_block_id, slot_index)` 쌍으로 변환하는 계산기 |
 
 ---
 

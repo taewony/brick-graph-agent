@@ -8,6 +8,10 @@ generated:
   by: agent:builder/1.0
   at: 2026-08-06T08:39:47Z
 verified: []
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Fault Tolerance (장애 내성)
@@ -43,5 +47,5 @@ verified: []
 - **Eventual Consistency** – 장애 중에도 읽기·쓰기를 허용하고, 복구 시 백그라운드 동기화 수행.
 
 ## 🔗 관련 관계
-- **PREREQUISITES**: `distributed_kv`, `load_balancer`
-- **COMPOSED_OF**: `distributed_serving` (전체 서비스 레이어에서 장애 내성을 활용)
+- **PREREQUISITES**: [`distributed_kv`](distributed_kv.md), [`load_balancer`](load_balancer.md)
+- **PREREQUISITE_OF**: [`composite.distributed_serving`](../02_composite/distributed_serving_system.md) (전체 서비스 레이어에서 장애 내성을 활용)

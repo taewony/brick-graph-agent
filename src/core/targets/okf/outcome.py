@@ -36,8 +36,16 @@ class OkfOutcome(Outcome):
 
     question: str = ""
     answer: str = ""
+    # The final prompt parts the answer was grounded in — carries
+    # "concepts", "rules", "schema" (plus "question", "instructions",
+    # "hints"). This IS the prompt_parts dict the OKF action space
+    # produced, so the taxonomy's per-outcome detectors and the loop's
+    # build_probes can both read it without re-running the pipeline.
     context_parts: OkfContextParts = field(default_factory=dict)
     lint_errors: tuple[OkfLintError, ...] = ()
+    # Knowledge-base audit tag: the resolved bundle path the outcome was
+    # produced against (e.g. ".okf/01_nano_vllm").
+    kb_name: str = ""
 
     def __post_init__(self) -> None:
         if self.answer and not self.hypothesis:

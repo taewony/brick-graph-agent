@@ -2,22 +2,27 @@
 type: AtomicConcept
 id: atomic.tensor_parallelism
 title: Tensor Parallelism (텐서 병렬성)
-description: Megatron-LM 스타일의 Column-wise / Row-wise 가중치 분할(Sharding)을 통해 하나의 대형 Linear 레이어를 여러 GPU에 분산 배치하고, Forward Pass 시 All-Reduce로 부분 합을 동기화하는 모델 병렬화 전략
+description: Megatron-LM 스타일의 Column-wise / Row-wise 가중치 분할(Sharding)을 통해 하나의 대형 Linear
+  레이어를 여러 GPU에 분산 배치하고, Forward Pass 시 All-Reduce로 부분 합을 동기화하는 모델 병렬화 전략
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-07T08:00:00Z
+  at: 2026-08-07 08:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-07T08:00:00Z
+- by: human:curator
+  at: 2026-08-07 08:00:00+00:00
 prerequisites:
-  - atomic.inference_only
+- atomic.inference_only
 composes_into:
-  - composite.distributed_executor (Module 07)
+- composite.distributed_executor (Module 07)
 sources:
-  - id: megatron_tp
-    resource: https://arxiv.org/abs/1909.08053
-    title: "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism"
+- id: megatron_tp
+  resource: https://arxiv.org/abs/1909.08053
+  title: 'Megatron-LM: Training Multi-Billion Parameter Language Models Using Model
+    Parallelism'
+prerequisite_of:
+- atomic.master_worker
+- atomic.nccl_communicator
 ---
 
 # Tensor Parallelism (텐서 병렬성)
@@ -51,6 +56,6 @@ sources:
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `atomic.inference_only`
-- **PREREQUISITE_OF**: `composite.distributed_executor` (Module 07)
-- **SYNERGY WITH**: `atomic.nccl_communicator` (All-Reduce 구현), `atomic.distributed_kv_cache` (KV Heads 분할)
+- **PREREQUISITES**: [`atomic.inference_only`](inference_only.md)
+- **PREREQUISITE_OF**: [`composite.distributed_serving`](../02_composite/distributed_serving_system.md) (Module 07)
+- **SYNERGY WITH**: [`atomic.nccl_communicator`](nccl_communicator.md) (All-Reduce 구현), [`atomic.distributed_kv`](distributed_kv.md) (KV Heads 분할)

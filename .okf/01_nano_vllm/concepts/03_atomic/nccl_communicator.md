@@ -2,22 +2,26 @@
 type: AtomicConcept
 id: atomic.nccl_communicator
 title: NCCL Communicator (NCCL 통신자)
-description: NVIDIA Collective Communications Library (NCCL) 백엔드를 활용하여 Tensor Parallelism 시 GPU 간 All-Reduce, Broadcast, All-Gather 등 집단 통신(Collective Communication)을 고속으로 수행하는 통신 계층
+description: NVIDIA Collective Communications Library (NCCL) 백엔드를 활용하여 Tensor Parallelism
+  시 GPU 간 All-Reduce, Broadcast, All-Gather 등 집단 통신(Collective Communication)을 고속으로
+  수행하는 통신 계층
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-07T08:10:00Z
+  at: 2026-08-07 08:10:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-07T08:10:00Z
+- by: human:curator
+  at: 2026-08-07 08:10:00+00:00
 prerequisites:
-  - atomic.tensor_parallelism
+- atomic.tensor_parallelism
 composes_into:
-  - composite.distributed_executor (Module 07)
+- composite.distributed_executor (Module 07)
 sources:
-  - id: nccl_docs
-    resource: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/overview.html
-    title: "NCCL User Guide"
+- id: nccl_docs
+  resource: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/overview.html
+  title: NCCL User Guide
+prerequisite_of:
+- atomic.distributed_kv
 ---
 
 # NCCL Communicator (NCCL 통신자)

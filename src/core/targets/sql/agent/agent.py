@@ -14,7 +14,9 @@ can't ride in event payloads."""
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from activegraph import Event, FrozenClock, Graph, IDGen, Runtime, get_registry
@@ -31,6 +33,17 @@ from src.core.targets.sql.agent.behaviors import (
 
 DEFAULT_FROZEN_T = "2026-01-01T00:00:00Z"
 DETERMINISTIC_RUN_ID = "regimes-sql-agent-determ"
+
+
+def _close_store(rt: Runtime) -> None:
+    """Release the SQLiteEventStore connection so the file can be
+    removed/rotated on Windows."""
+    store = getattr(rt.graph, "store", None)
+    if store is not None:
+        try:
+            store.close()
+        except Exception:  # noqa: BLE001 — best-effort hygiene
+            pass
 
 _SQL_AGENT_BEHAVIORS_SNAPSHOT = [
     b for b in get_registry() if b.name.startswith("sql_agent.")
@@ -65,19 +78,32 @@ def retrieve(
     *,
     reader: Any,
     frozen_t: str = DEFAULT_FROZEN_T,
+    store_path: str | Path | None = None,
 ) -> RetrieveTrace:
     """End-to-end: encode schema → score columns → assemble prompt
-    (running prompt_transforms) → draft SQL via the Reader."""
+    (running prompt_transforms) → draft SQL via the Reader.
+
+    `store_path` attaches a durable SQLiteEventStore so the run's event
+    log (including llm.requested / llm.responded) is persisted (Phase 5)."""
 
     question_id = instance["question_id"]
     question = instance["question"]
 
+    # A stored run needs a UNIQUE run_id per store file (the store keys
+    # events on (id, run_id)); the deterministic id is for the in-memory
+    # path only.
+    run_id = DETERMINISTIC_RUN_ID if store_path is None else f"brick-sql-{uuid.uuid4().hex[:12]}"
     graph = Graph(
         ids=IDGen(),
         clock=FrozenClock(frozen_t),
-        run_id=DETERMINISTIC_RUN_ID,
+        run_id=run_id,
     )
-    rt = Runtime(graph, behaviors=_SQL_AGENT_BEHAVIORS_SNAPSHOT)
+    rt_kw: dict[str, Any] = {"behaviors": _SQL_AGENT_BEHAVIORS_SNAPSHOT}
+    if store_path is not None:
+        p = Path(store_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        rt_kw["persist_to"] = str(p)
+    rt = Runtime(graph, **rt_kw)
 
     _set_reader(question_id, reader)
     try:
@@ -136,3 +162,4 @@ def retrieve(
         )
     finally:
         _clear_reader(question_id)
+        _close_store(rt)

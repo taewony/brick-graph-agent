@@ -10,6 +10,10 @@ generated:
 verified:
   - by: human:curator
     at: 2026-08-06T07:16:15Z
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Iteration Level Scheduling (배치 단계 스케줄링)
@@ -19,5 +23,5 @@ verified:
 **Iteration Level Scheduling**은 배치 내부 토큰 길이에 따라 우선순위를 부여하고, GPU 메모리/연산량을 균등하게 분배하도록 배치를 순차적으로 처리하는 정책입니다.
 
 ## 🔗 관련 관계
-- **PREREQUISITES**: `continuous_batching`
-- **PREREQUISITE_OF**: `dynamic_batcher` (Composite Concept, Module 03)
+- **PREREQUISITES**: [`continuous_batching`](continuous_batching.md)
+- **PREREQUISITE_OF**: [`dynamic_batcher`](../02_composite/dynamic_batcher.md) (Composite Concept, Module 03)

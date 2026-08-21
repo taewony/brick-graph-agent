@@ -14,6 +14,10 @@ prerequisites:
   - atomic.master_worker
 composes_into:
   - composite.distributed_executor (Module 07)
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Shared Memory IPC (공유 메모리 프로세스 간 통신)
@@ -55,6 +59,6 @@ Shared Memory 레이아웃 (기본 크기: 1 MB = 2^20 bytes):
 
 ## 🔗 관련 관계
 
-- **PREREQUISITES**: `atomic.master_worker`
-- **PREREQUISITE_OF**: `composite.distributed_executor`
-- **SYNERGY WITH**: `atomic.nccl_communicator` (명령 전달은 IPC, 텐서 동기화는 NCCL)
+- **PREREQUISITES**: [`atomic.master_worker`](master_worker.md)
+- **PREREQUISITE_OF**: [`composite.distributed_serving`](../02_composite/distributed_serving_system.md)
+- **SYNERGY WITH**: [`atomic.nccl_communicator`](nccl_communicator.md) (명령 전달은 IPC, 텐서 동기화는 NCCL)

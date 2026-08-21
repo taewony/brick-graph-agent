@@ -1,18 +1,18 @@
-주어진 repository 구조에서 **Super-Agent**(text-to-SQL + OKF ingest/lint/ask + incremental-learning mentor) 개발에 재활용할 수 있는 코드 파일을 **재사용 수준별**로 분류해 드리겠습니다.
+주어진 repository 구조에서 **brick.agent**(text-to-SQL + OKF ingest/lint/ask + incremental-learning mentor) 개발에 재활용할 수 있는 코드 파일을 **재사용 수준별**로 분류해 드리겠습니다.
 
 ---
 
 ## 1. 완전 재사용 가능한 범용 코어 (그대로 가져다 사용)
 
 이 파일들은 특정 도메인에 의존하지 않는 **ActiveGraph 기반 Self-Improving Agent의 공통 인프라**입니다.  
-Super-Agent의 모든 역할(SQL, OKF, Mentor)이 공유해야 하는 핵심 계층입니다.
+brick.agent의 모든 역할(SQL, OKF, Mentor)이 공유해야 하는 핵심 계층입니다.
 
 | 파일 | 재사용 이유 |
 |------|-------------|
-| `agent/agent.py` | 에이전트 런타임 초기화, behavior 스냅샷, 실행 진입점. Super-Agent 전체를 감싸는 기본 틀로 재사용 |
+| `agent/agent.py` | 에이전트 런타임 초기화, behavior 스냅샷, 실행 진입점. brick.agent 전체를 감싸는 기본 틀로 재사용 |
 | `agent/behaviors.py` | behavior 등록/관리 패턴. 각 역할(SQL/OKF/Mentor)의 behavior를 동일한 방식으로 등록할 때 재사용 |
-| `agent/events.py` | 이벤트 상수 정의 패턴. Super-Agent의 통합 이벤트 vocabulary를 정의할 때 베이스로 사용 |
-| `agent/build.py` | 에이전트 조립(타겟, action space, taxonomy 연결) 로직. Super-Agent의 역할별 타겟을 조립할 때 재사용 |
+| `agent/events.py` | 이벤트 상수 정의 패턴. brick.agent의 통합 이벤트 vocabulary를 정의할 때 베이스로 사용 |
+| `agent/build.py` | 에이전트 조립(타겟, action space, taxonomy 연결) 로직. brick.agent의 역할별 타겟을 조립할 때 재사용 |
 | `agent/embedders.py` | 임베딩 모듈. SQL 컬럼 스코어링, OKF 개념 검색, 요청 라우팅 등 **모든 의미 검색에 공통 사용** |
 | `agent/transforms.py` | 프롬프트 변환 파이프라인의 범용 구현. SQL prompt pipeline과 OKF ask prompt pipeline 모두에서 재사용 |
 | `agent/reader_transforms.py` | Reader 호출 전후에 적용하는 변환. OKF/SQL에서 LLM 입출력을 정규화할 때 재사용 |
@@ -41,13 +41,13 @@ Super-Agent의 모든 역할(SQL, OKF, Mentor)이 공유해야 하는 핵심 계
 
 ## 3. SQL Target 전용 모듈 (Text-to-SQL 역할에 직접 재사용)
 
-`targets/sql/` 아래 파일들은 이미 **Text-to-SQL** 역할에 특화되어 있으므로, Super-Agent의 SQL 역할 구현에 **거의 그대로** 사용할 수 있습니다.
+`targets/sql/` 아래 파일들은 이미 **Text-to-SQL** 역할에 특화되어 있으므로, brick.agent의 SQL 역할 구현에 **거의 그대로** 사용할 수 있습니다.
 
 | 파일 | 재사용 이유 |
 |------|-------------|
-| `targets/sql/agent/agent.py` | SQL 에이전트의 실행 진입점. Super-Agent 내 SQL 서브에이전트로 포함 |
-| `targets/sql/agent/behaviors.py` | SQL용 behavior 4종(encode_schema, score_columns, prompt_pipeline, draft_query). Super-Agent의 SQL 이벤트 체인에 그대로 재사용 |
-| `targets/sql/agent/events.py` | SQL 이벤트 상수. Super-Agent의 통합 이벤트 vocabulary에 SQL 부분으로 통합 |
+| `targets/sql/agent/agent.py` | SQL 에이전트의 실행 진입점. brick.agent 내 SQL 서브에이전트로 포함 |
+| `targets/sql/agent/behaviors.py` | SQL용 behavior 4종(encode_schema, score_columns, prompt_pipeline, draft_query). brick.agent의 SQL 이벤트 체인에 그대로 재사용 |
+| `targets/sql/agent/events.py` | SQL 이벤트 상수. brick.agent의 통합 이벤트 vocabulary에 SQL 부분으로 통합 |
 | `targets/sql/action_space.py` | SQL ActionSpace. 프롬프트 변환 파이프라인 + SQL 게이트를 캡슐화. SQL 역할의 액션 공간으로 재사용 |
 | `targets/sql/target.py` | SqlTarget 조립 팩토리. SQL 역할의 타겟 구성에 재사용 |
 | `targets/sql/taxonomy.py` | SQL 구조 결정적 탐지기(조인/WHERE/GROUP BY). SQL 평가 신호 생성에 재사용 |
@@ -80,10 +80,10 @@ OKF ingest/lint/ask는 SQL과 도메인이 다르기 때문에 직접 재사용�
 
 ## 5. 재사용 우선순위 요약
 
-Super-Agent 개발 시 **가장 먼저 가져와야 할 파일**은 다음과 같습니다.
+brick.agent 개발 시 **가장 먼저 가져와야 할 파일**은 다음과 같습니다.
 
 1. **범용 코어 전체** — `agent/`, `eval/`, `loop/`  
-   → Super-Agent의 뼈대를 구성  
+   → brick.agent의 뼈대를 구성  
 2. **SQL Target 전체** — `targets/sql/`  
    → Text-to-SQL 역할을 즉시 통합  
 3. **OKF Target 개발 시 참조** — `targets/longmemeval/` + `targets/sql/action_space.py`, `taxonomy.py`, `outcome.py`, `prompt_transforms.py`  
@@ -95,7 +95,7 @@ Super-Agent 개발 시 **가장 먼저 가져와야 할 파일**은 다음과 �
 
 ```text
 We have an existing repository with an ActiveGraph-based self-improving agent core.
-The following directories are directly reusable for the Super-Agent:
+The following directories are directly reusable for the brick.agent:
 
 - agent/ → use as shared runtime and services (reader, embedder, transforms, events, behaviors)
 - eval/ → use as evaluation abstraction (types, real evaluator)
@@ -109,7 +109,7 @@ For the OKF role, do NOT copy SQL-specific code directly. Instead, use the follo
 - targets/sql/prompt_transforms.py → OKF prompt pipeline
 - targets/longmemeval/target.py → OKF Target assembly pattern
 
-Implement the Super-Agent by composing these existing components, adding only OKF-specific parsers and graph schema definitions.
+Implement the brick.agent by composing these existing components, adding only OKF-specific parsers and graph schema definitions.
 ```
 
-이렇게 정리하면 Coding Agent가 불필요한 재개발 없이 **기존 코드를 최대한 재활용**하면서 Super-Agent를 빠르게 구축할 수 있습니다.
+이렇게 정리하면 Coding Agent가 불필요한 재개발 없이 **기존 코드를 최대한 재활용**하면서 brick.agent를 빠르게 구축할 수 있습니다.

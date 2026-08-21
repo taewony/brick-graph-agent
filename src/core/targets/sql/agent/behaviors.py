@@ -20,7 +20,6 @@ for its Python callables."""
 from __future__ import annotations
 
 import math
-import threading
 from typing import Any
 
 from activegraph import behavior
@@ -28,32 +27,22 @@ from activegraph import behavior
 from src.core.agent.embedders import get_embedder
 from src.core.targets.sql import prompt_transforms
 from src.core.targets.sql.agent import events as E
+from src.runtime import observability
+from src.runtime.reader_registry import (
+    clear_reader as _clear_reader,
+    get_reader as _get_reader,
+    set_reader as _set_reader,
+)
 
 
 # ===========================================================================
-# Reader-context indirection
+# Reader-context indirection (shared registry — see src.runtime)
 # ===========================================================================
 # Python callables don't survive event payloads. The retrieve() entry
 # point sets the reader here keyed by question_id; behavior_draft_query
-# reads it back.
-
-_READERS: dict[str, Any] = {}
-_READER_LOCK = threading.Lock()
-
-
-def _set_reader(question_id: str, reader: Any) -> None:
-    with _READER_LOCK:
-        _READERS[question_id] = reader
-
-
-def _get_reader(question_id: str) -> Any:
-    with _READER_LOCK:
-        return _READERS.get(question_id)
-
-
-def _clear_reader(question_id: str) -> None:
-    with _READER_LOCK:
-        _READERS.pop(question_id, None)
+# reads it back. `_set_reader` / `_get_reader` / `_clear_reader` are
+# aliases of `src.runtime.reader_registry` so this module's public
+# contract is unchanged.
 
 
 # ===========================================================================
@@ -271,10 +260,11 @@ def behavior_prompt_pipeline(event, graph, ctx) -> None:  # noqa: ARG001
 
 @behavior(name="sql_agent.draft_query", on=[E.PROMPT_ASSEMBLED])
 def behavior_draft_query(event, graph, ctx) -> None:  # noqa: ARG001
-    """Call the configured Reader to draft a SELECT. Failures are
-    recorded on the event as `drafter_error` (per the framework's
-    failure model — errors during runtime become event payload
-    entries, not raises)."""
+    """Call the configured Reader to draft a SELECT, wrapped in the
+    LLM observability seam (llm.requested / llm.responded with model,
+    prompt_hash, answer, latency). Failures are recorded on the event as
+    `drafter_error` (per the framework's failure model — errors during
+    runtime become event payload entries, not raises)."""
     payload = event.payload
     question_id = payload["question_id"]
     question = payload["question"]
@@ -286,10 +276,13 @@ def behavior_draft_query(event, graph, ctx) -> None:  # noqa: ARG001
     if reader is None:
         drafter_error = "reader_missing: no Reader registered for question_id"
     else:
-        try:
-            sql = reader.answer(context=prompt, question=question, question_id=question_id)
-        except Exception as e:  # noqa: BLE001 — runtime path
-            drafter_error = f"{type(e).__name__}: {e}"
+        sql, drafter_error, _latency, _req, _resp = observability.ask_with_observability(
+            graph,
+            reader,
+            request_id=question_id,
+            question=question,
+            context=prompt,
+        )
 
     graph.emit(
         E.QUERY_DRAFTED,

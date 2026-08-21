@@ -6,10 +6,18 @@ description: 이전 단계 토큰 1개만을 받아 다음 토큰을 순차적�
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-05T13:11:00Z
+  at: 2026-08-05 13:11:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-05T13:11:00Z
+- by: human:curator
+  at: 2026-08-05 13:11:00+00:00
+sources:
+- id: vllm-paper
+  resource: https://arxiv.org/abs/2209.06155
+  title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
+prerequisite_of:
+- atomic.kv_cache
+prerequisites:
+- atomic.inference_only
 ---
 
 # Decode Phase (디코드 단계)
@@ -36,6 +44,6 @@ verified:
 ## 🔗 관련 관계 (Relationships)
 
 - **PREREQUISITES**:
-  - `prefill_phase`
+  - [`prefill_phase`](prefill_phase.md)
 - **PREREQUISITE_OF**:
-  - `inference_model`
+  - [`inference_model`](../02_composite/inference_model.md)

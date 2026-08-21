@@ -31,14 +31,14 @@ verified:
 
 | 모듈 | 제목 | 핵심 개념 (Atomic / Composite) | 상태 |
 |---|---|---|---|
-| **Module 00** | Foundational Concepts | `inference_only`, `prefill_phase`, `decode_phase` | 🟢 완료 |
-| **Module 01** | Autoregressive Generation | `kv_cache`, `attention`, `ffn`, `sampling` | 🟢 완료 |
-| **Module 02** | Basic KV Cache Engine | `static_kv_cache`, `seq_len_budget` | 🟢 완료 |
-| **Module 03** | Continuous Batching | `continuous_batching`, `iteration_level_scheduling` | 🟢 완료 |
-| **Module 04** | PagedAttention Architecture | `paged_kv_cache`, `block_table`, `slot_mapping` | 🟢 완료 |
-| **Module 05** | Memory Management & Allocation | `memory_pool`, `block_allocator`, `swap_manager`, `block_manager` | 🟢 완료 |
-| **Module 06** | Advanced Prefix Caching | `prefix_cache`, `cache_hit_detection`, `caching_strategy` | 🟢 완료 |
-| **Module 07** | Multi-GPU & Distributed Serving | `distributed_kv`, `load_balancer`, `fault_tolerance`, `distributed_serving` | 🟢 완료 |
+| **[Module 00](concepts/01_module/module_00_foundational.md)** | Foundational Concepts | [`inference_only`](concepts/03_atomic/inference_only.md), [`prefill_phase`](concepts/03_atomic/prefill_phase.md), [`decode_phase`](concepts/03_atomic/decode_phase.md) | 🟢 완료 |
+| **[Module 01](concepts/01_module/module_01_autoregressive.md)** | Autoregressive Generation | [`kv_cache`](concepts/03_atomic/kv_cache.md), [`attention`](concepts/03_atomic/attention.md), [`ffn`](concepts/03_atomic/ffn.md), [`sampling`](concepts/03_atomic/sampling.md) | 🟢 완료 |
+| **[Module 02](concepts/01_module/module_02_basic_kv_cache.md)** | Basic KV Cache Engine | [`static_kv_cache`](concepts/03_atomic/static_kv_cache.md), [`seq_len_budget`](concepts/03_atomic/seq_len_budget.md) | 🟢 완료 |
+| **[Module 03](concepts/01_module/module_03_continuous_batching.md)** | Continuous Batching | [`continuous_batching`](concepts/03_atomic/continuous_batching.md), [`iteration_level_scheduling`](concepts/03_atomic/iteration_level_scheduling.md) | 🟢 완료 |
+| **[Module 04](concepts/01_module/module_04_paged_attention.md)** | PagedAttention Architecture | [`paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md), [`block_table`](concepts/03_atomic/block_table.md), [`slot_mapping`](concepts/03_atomic/slot_mapping.md) | 🟢 완료 |
+| **[Module 05](concepts/01_module/module_05_memory_management.md)** | Memory Management & Allocation | [`memory_pool`](concepts/03_atomic/memory_pool.md), [`block_allocator`](concepts/03_atomic/block_allocator.md), [`swap_manager`](concepts/03_atomic/swap_manager.md), [`block_manager`](concepts/02_composite/block_manager.md) | 🟢 완료 |
+| **[Module 06](concepts/01_module/module_06_prefix_caching.md)** | Advanced Prefix Caching | [`prefix_cache`](concepts/03_atomic/prefix_cache.md), [`cache_hit_detection`](concepts/03_atomic/cache_hit_detection.md), [`caching_strategy`](concepts/02_composite/caching_strategy.md) | 🟢 완료 |
+| **[Module 07](concepts/01_module/module_07_distributed_serving.md)** | Multi-GPU & Distributed Serving | [`distributed_kv`](concepts/03_atomic/distributed_kv.md), [`load_balancer`](concepts/03_atomic/load_balancer.md), [`fault_tolerance`](concepts/03_atomic/fault_tolerance.md), [`distributed_serving`](concepts/02_composite/distributed_serving_system.md) | 🟢 완료 |
 
 ---
 

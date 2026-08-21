@@ -21,12 +21,12 @@ verified:
 ## 🧱 포함된 개념 (Concepts)
 
 ### 원자적 개념 (Atomic Concepts)
-- **[prefill_phase](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/prefill_phase.md)**: 입력 프롬프트 전체 토큰을 한 번에 병렬 처리하여 첫 번째 토큰을 생성하고 최초 KV 캐시를 구축하는 단계
-- **[decode_phase](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/decode_phase.md)**: 생성된 이전 토큰 1개만을 입력으로 받아 다음 토큰을 순차적으로 1개씩 생성하는 단계
-- **[inference_only](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/01_atomic_concepts/inference_only.md)**: 역전파(Backpropagation) 없이 Forward Pass만 수행되는 추론 전용 워크로드 특성
+- **[`prefill_phase`](../03_atomic/prefill_phase.md)**: 입력 프롬프트 전체 토큰을 한 번에 병렬 처리하여 첫 번째 토큰을 생성하고 최초 KV 캐시를 구축하는 단계
+- **[`decode_phase`](../03_atomic/decode_phase.md)**: 생성된 이전 토큰 1개만을 입력으로 받아 다음 토큰을 순차적으로 1개씩 생성하는 단계
+- **[`inference_only`](../03_atomic/inference_only.md)**: 역전파(Backpropagation) 없이 Forward Pass만 수행되는 추론 전용 워크로드 특성
 
 ### 복합 개념 (Composite Concepts)
-- **[inference_model](file:///D:/code/brick-graph-agent/.okf/00_nano_vllm/02_composite_concepts/inference_model.md)**: Prefill과 Decode 단계를 통합 제어하는 기본 추론 파이프라인
+- **[`inference_model`](../02_composite/inference_model.md)**: Prefill과 Decode 단계를 통합 제어하는 기본 추론 파이프라인
 
 ---
 
@@ -44,5 +44,5 @@ verified:
 
 ## 📝 실습 과제 (Lab Assignment)
 
-1. `prefill_phase`와 `decode_phase`의 입력 텐서 차원(Batch Size, Sequence Length) 차이 분석하기
+1. [`prefill_phase`](../03_atomic/prefill_phase.md)와 [`decode_phase`](../03_atomic/decode_phase.md)의 입력 텐서 차원(Batch Size, Sequence Length) 차이 분석하기
 2. GPU 연산 병목(Compute-bound vs Memory Bandwidth-bound) 특성 비교하기

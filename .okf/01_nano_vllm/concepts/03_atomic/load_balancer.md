@@ -8,6 +8,10 @@ generated:
   by: agent:builder/1.0
   at: 2026-08-06T08:11:19Z
 verified: []
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Load Balancer (로드 밸런서)
@@ -27,5 +31,5 @@ verified: []
 4. **응답 반환** – 노드 응답을 클라이언트에 바로 전달.
 
 ## 🔗 관련 관계
-- **PREREQUISITES**: `distributed_kv`
-- **COMPOSED_OF**: `fault_tolerance` (장애 시 재시도·전환)
+- **PREREQUISITES**: [`distributed_kv`](distributed_kv.md)
+- **PREREQUISITE_OF**: [`fault_tolerance`](fault_tolerance.md) (장애 시 재시도·전환)

@@ -2,22 +2,26 @@
 type: AtomicConcept
 id: atomic.block_table
 title: Block Table (블록 테이블)
-description: "각 시퀀스의 논리적 블록 번호를 GPU HBM 상의 물리적 블록 ID에 매핑하여 Paged KV Cache의 논리적 연속성을 보장하는 자료구조"
+description: 각 시퀀스의 논리적 블록 번호를 GPU HBM 상의 물리적 블록 ID에 매핑하여 Paged KV Cache의 논리적 연속성을
+  보장하는 자료구조
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-07T09:00:00Z
+  at: 2026-08-07 09:00:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-07T09:00:00Z
+- by: human:curator
+  at: 2026-08-07 09:00:00+00:00
 prerequisites:
-  - atomic.paged_kv_cache
+- atomic.paged_kv_cache
 composes_into:
-  - composite.paged_attention_manager
+- composite.paged_attention_manager
 sources:
-  - id: vllm_paged_attention
-    resource: https://arxiv.org/abs/2309.06180
-    title: "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+- id: vllm_paged_attention
+  resource: https://arxiv.org/abs/2309.06180
+  title: Efficient Memory Management for Large Language Model Serving with PagedAttention
+prerequisite_of:
+- atomic.slot_mapping
+- composite.paged_attention_manager
 ---
 
 # Block Table (블록 테이블)
@@ -46,6 +50,6 @@ Sequence A Block Table:
 
 ## 🔗 관련 관계 (Relationships)
 
-- **PREREQUISITES**: `atomic.paged_kv_cache`
-- **COMPOSES_INTO**: `composite.paged_attention_manager`
-- **SYNERGY WITH**: `atomic.slot_mapping`
+- **PREREQUISITES**: [`atomic.paged_kv_cache`](paged_kv_cache.md)
+- **COMPOSES_INTO**: [`composite.paged_attention_manager`](../02_composite/paged_attention_manager.md)
+- **SYNERGY WITH**: [`atomic.slot_mapping`](slot_mapping.md)

@@ -8,6 +8,10 @@ generated:
   by: agent:builder/1.0
   at: 2026-08-06T08:07:41Z
 verified: []
+sources:
+  - id: vllm-paper
+    resource: https://arxiv.org/abs/2209.06155
+    title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Prefix Cache (프리픽스 캐시)
@@ -25,5 +29,5 @@ verified: []
 4. **캐시 미스** → 프리패딩 수행 후 결과를 캐시에 저장.
 
 ## 🔗 관련 관계
-- **PREREQUISITES**: `kv_cache`
-- **COMPOSED_OF**: `cache_hit_detection`, `caching_strategy`
+- **PREREQUISITES**: [`kv_cache`](kv_cache.md)
+- **COMPOSED_OF**: [`cache_hit_detection`](cache_hit_detection.md), [`caching_strategy`](../02_composite/caching_strategy.md)

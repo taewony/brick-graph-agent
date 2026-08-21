@@ -26,25 +26,25 @@ nano‑vLLM 학습 자료는 **14개 랩(Lab)** 으로 구성된 방대한 내�
 
 | ID | 개념 | 설명 | 선행 조건 |
 |---|---|---|---|
-| `atomic.inference_only` | Inference‑Only Graph | 훈련 그래프와 달리 역전파, 옵티마이저, 그래디언트가 없는 순전파 전용 그래프 | 없음 |
-| `atomic.prefill_phase` | Prefill Phase | 전체 프롬프트를 한 번에 처리하는 Compute‑Bound 단계 | `atomic.inference_only` |
-| `atomic.decode_phase` | Decode Phase | 토큰을 하나씩 생성하는 Memory‑Bound 단계 | `atomic.inference_only` |
-| `atomic.kv_cache` | KV Cache | 각 토큰의 Key/Value를 저장하는 동적 상태 | `atomic.inference_only` |
-| `atomic.attention` | Masked Self‑Attention | Query‑Key‑Value 연산 + Causal Masking | `atomic.kv_cache` |
-| `atomic.ffn` | Feed‑Forward Network | 각 토큰에 독립적으로 적용되는 2층 MLP | `atomic.attention` |
-| `atomic.sampling` | Sampling Strategy | 로짓→토큰 ID 변환 (온도, top‑k, top‑p 등) | `atomic.decode_phase` |
-| `atomic.continuous_batching` | Continuous Batching | 여러 요청을 동시에 처리하는 일괄 처리 | `atomic.prefill_phase`, `atomic.decode_phase` |
-| `atomic.paged_kv_cache` | Paged KV Cache | 고정 크기 블록 단위의 KV 캐시 관리 | `atomic.kv_cache` |
-| `atomic.hybrid_scheduling` | Hybrid Scheduling | 우선순위 기반 지능형 스케줄링 | `atomic.continuous_batching` |
+| [`atomic.inference_only`](concepts/03_atomic/inference_only.md) | Inference‑Only Graph | 훈련 그래프와 달리 역전파, 옵티마이저, 그래디언트가 없는 순전파 전용 그래프 | 없음 |
+| [`atomic.prefill_phase`](concepts/03_atomic/prefill_phase.md) | Prefill Phase | 전체 프롬프트를 한 번에 처리하는 Compute‑Bound 단계 | [`atomic.inference_only`](concepts/03_atomic/inference_only.md) |
+| [`atomic.decode_phase`](concepts/03_atomic/decode_phase.md) | Decode Phase | 토큰을 하나씩 생성하는 Memory‑Bound 단계 | [`atomic.inference_only`](concepts/03_atomic/inference_only.md) |
+| [`atomic.kv_cache`](concepts/03_atomic/kv_cache.md) | KV Cache | 각 토큰의 Key/Value를 저장하는 동적 상태 | [`atomic.inference_only`](concepts/03_atomic/inference_only.md) |
+| [`atomic.attention`](concepts/03_atomic/attention.md) | Masked Self‑Attention | Query‑Key‑Value 연산 + Causal Masking | [`atomic.kv_cache`](concepts/03_atomic/kv_cache.md) |
+| [`atomic.ffn`](concepts/03_atomic/ffn.md) | Feed‑Forward Network | 각 토큰에 독립적으로 적용되는 2층 MLP | [`atomic.attention`](concepts/03_atomic/attention.md) |
+| [`atomic.sampling`](concepts/03_atomic/sampling.md) | Sampling Strategy | 로짓→토큰 ID 변환 (온도, top‑k, top‑p 등) | [`atomic.decode_phase`](concepts/03_atomic/decode_phase.md) |
+| [`atomic.continuous_batching`](concepts/03_atomic/continuous_batching.md) | Continuous Batching | 여러 요청을 동시에 처리하는 일괄 처리 | [`atomic.prefill_phase`](concepts/03_atomic/prefill_phase.md), [`atomic.decode_phase`](concepts/03_atomic/decode_phase.md) |
+| [`atomic.paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md) | Paged KV Cache | 고정 크기 블록 단위의 KV 캐시 관리 | [`atomic.kv_cache`](concepts/03_atomic/kv_cache.md) |
+| `atomic.hybrid_scheduling` | Hybrid Scheduling | 우선순위 기반 지능형 스케줄링 | [`atomic.continuous_batching`](concepts/03_atomic/continuous_batching.md) |
 
 ### 2.2 복합 개념 (Composite Concepts) — 원자적 개념들의 조합
 
 | ID | 구성 요소 | 설명 |
 |---|---|---|
-| `composite.inference_model` | `atomic.inference_only` + `atomic.kv_cache` | 추론 전용 모델의 전체 메모리 모델 (가중치 40%, KV Cache 55%, Activation 5%) |
-| `composite.autoregressive_loop` | `atomic.prefill_phase` + `atomic.decode_phase` + `atomic.sampling` | 프리필→디코드 반복의 자가회귀 생성 루프 |
-| `composite.decoder_layer` | `atomic.attention` + `atomic.ffn` + 잔차 연결 | 단일 Transformer 디코더 계층 전체 |
-| `composite.serving_system` | `atomic.continuous_batching` + `atomic.paged_kv_cache` + `atomic.hybrid_scheduling` | vLLM의 전체 서빙 시스템 아키텍처 |
+| [`composite.inference_model`](concepts/02_composite/inference_model.md) | [`atomic.inference_only`](concepts/03_atomic/inference_only.md) + [`atomic.kv_cache`](concepts/03_atomic/kv_cache.md) | 추론 전용 모델의 전체 메모리 모델 (가중치 40%, KV Cache 55%, Activation 5%) |
+| [`composite.autoregressive_loop`](concepts/02_composite/autoregressive_loop.md) | [`atomic.prefill_phase`](concepts/03_atomic/prefill_phase.md) + [`atomic.decode_phase`](concepts/03_atomic/decode_phase.md) + [`atomic.sampling`](concepts/03_atomic/sampling.md) | 프리필→디코드 반복의 자가회귀 생성 루프 |
+| [`composite.decoder_layer`](concepts/02_composite/decoder_layer.md) | [`atomic.attention`](concepts/03_atomic/attention.md) + [`atomic.ffn`](concepts/03_atomic/ffn.md) + 잔차 연결 | 단일 Transformer 디코더 계층 전체 |
+| [`composite.serving_system`](concepts/02_composite/serving_system.md) | [`atomic.continuous_batching`](concepts/03_atomic/continuous_batching.md) + [`atomic.paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md) + `atomic.hybrid_scheduling` | vLLM의 전체 서빙 시스템 아키텍처 |
 
 ### 2.3 개념 간 관계 그래프
 
@@ -263,10 +263,10 @@ generated:
 
 | 단계 | 학습 목표 | 포함 개념 | 원본 Module |
 |---|---|---|---|
-| **Foundation** | 추론의 기본 모델 이해 | `inference_only`, `prefill_phase`, `decode_phase` | Module 0 |
-| **Engine** | 자가회귀 생성 엔진 이해 | `attention`, `ffn`, `autoregressive_loop`, `sampling` | Module 1 |
-| **Memory** | KV Cache와 메모리 관리 이해 | `kv_cache`, `paged_kv_cache`, `inference_model` | Module 2 |
-| **Systems** | 대규모 서빙 아키텍처 이해 | `continuous_batching`, `hybrid_scheduling`, `serving_system` | Module 3~13 |
+| **Foundation** | 추론의 기본 모델 이해 | [`inference_only`](concepts/03_atomic/inference_only.md), [`prefill_phase`](concepts/03_atomic/prefill_phase.md), [`decode_phase`](concepts/03_atomic/decode_phase.md) | Module 0 |
+| **Engine** | 자가회귀 생성 엔진 이해 | [`attention`](concepts/03_atomic/attention.md), [`ffn`](concepts/03_atomic/ffn.md), [`autoregressive_loop`](concepts/02_composite/autoregressive_loop.md), [`sampling`](concepts/03_atomic/sampling.md) | Module 1 |
+| **Memory** | KV Cache와 메모리 관리 이해 | [`kv_cache`](concepts/03_atomic/kv_cache.md), [`paged_kv_cache`](concepts/03_atomic/paged_kv_cache.md), [`inference_model`](concepts/02_composite/inference_model.md) | Module 2 |
+| **Systems** | 대규모 서빙 아키텍처 이해 | [`continuous_batching`](concepts/03_atomic/continuous_batching.md), `hybrid_scheduling`, [`serving_system`](concepts/02_composite/serving_system.md) | Module 3~13 |
 
 ### 5.2 학습 진척도 추적을 위한 OKF 메타데이터
 

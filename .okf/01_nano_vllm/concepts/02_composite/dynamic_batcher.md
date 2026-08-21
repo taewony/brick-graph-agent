@@ -2,29 +2,37 @@
 type: CompositeConcept
 id: composite.dynamic_batcher
 title: Dynamic Batcher (동적 배치 엔진)
-description: Static Batching(정적 배치)의 GPU 유휴 문제를 해결하기 위해, 매 Iteration(Iteration-Level Scheduling)마다 배치를 동적으로 재구성하여 GPU 활용률을 30~50%에서 90% 이상으로 끌어올리는 핵심 Composite 개념
+description: Static Batching(정적 배치)의 GPU 유휴 문제를 해결하기 위해, 매 Iteration(Iteration-Level
+  Scheduling)마다 배치를 동적으로 재구성하여 GPU 활용률을 30~50%에서 90% 이상으로 끌어올리는 핵심 Composite 개념
 status: draft
 generated:
   by: agent:builder/1.0
-  at: 2026-08-06T07:20:00Z
+  at: 2026-08-06 07:20:00+00:00
 verified:
-  - by: human:curator
-    at: 2026-08-06T07:20:00Z
+- by: human:curator
+  at: 2026-08-06 07:20:00+00:00
 components:
-  - continuous_batching
-  - iteration_level_scheduling
+- continuous_batching
+- iteration_level_scheduling
 prerequisites:
-  - composite.static_cache_manager (Module 02)
-  - composite.autoregressive_loop (Module 01)
+- atomic.iteration_level_scheduling
+- atomic.length_aware_scheduler
+- atomic.max_batch_size
+- composite.autoregressive_loop (Module 01)
+- composite.static_cache_manager (Module 02)
 composes_into:
-  - composite.serving_system (Module 03+04 통합)
+- composite.serving_system (Module 03+04 통합)
+sources:
+- id: vllm-paper
+  resource: https://arxiv.org/abs/2209.06155
+  title: vLLM - Easy, Fast and Cheap LLM Serving with PagedAttention
 ---
 
 # Dynamic Batcher (동적 배치 엔진)
 
 ## 📌 개념 정의
 
-**Dynamic Batcher**는 `continuous_batching`(연속 배치)과 `iteration_level_scheduling`(반복 수준 스케줄링)을 결합한 복합 개념입니다.  
+**Dynamic Batcher**는 [`continuous_batching`](../03_atomic/continuous_batching.md)(연속 배치)과 [`iteration_level_scheduling`](../03_atomic/iteration_level_scheduling.md)(반복 수준 스케줄링)을 결합한 복합 개념입니다.  
 기존 Static Batching(정적 배치)이 하나의 긴 요청 때문에 전체 배치가 블로킹(Blocking)되어 GPU가 유휴 상태로 남는 문제를 해결합니다.
 
 ---
@@ -76,14 +84,14 @@ GPU 시간 축 (Continuous Batching):
 
 | 구성 요소 | 설명 |
 |---|---|
-| `continuous_batching` | 배치를 실시간으로 재구성하는 연속 배치 처리 엔진 |
-| `iteration_level_scheduling` | 요청 단위가 아닌 Iteration 단위로 스케줄링하는 정책 |
+| [`continuous_batching`](../03_atomic/continuous_batching.md) | 배치를 실시간으로 재구성하는 연속 배치 처리 엔진 |
+| [`iteration_level_scheduling`](../03_atomic/iteration_level_scheduling.md) | 요청 단위가 아닌 Iteration 단위로 스케줄링하는 정책 |
 | `dynamic_rebalancer` | 배치 내 토큰 길이 불균형 시 재조정하는 내부 로직 |
 
 ---
 
 ## 🔗 관련 관계
 
-- **COMPOSED_OF**: `continuous_batching`, `iteration_level_scheduling`
-- **PREREQUISITES**: `composite.static_cache_manager` (Module 02), `composite.autoregressive_loop` (Module 01)
-- **PREREQUISITE_OF**: `composite.serving_system` (Module 03+04 통합)
+- **COMPOSED_OF**: [`continuous_batching`](../03_atomic/continuous_batching.md), [`iteration_level_scheduling`](../03_atomic/iteration_level_scheduling.md)
+- **PREREQUISITES**: [`composite.static_cache_manager`](static_cache_manager.md) (Module 02), [`composite.autoregressive_loop`](autoregressive_loop.md) (Module 01)
+- **PREREQUISITE_OF**: [`composite.serving_system`](serving_system.md) (Module 03+04 통합)

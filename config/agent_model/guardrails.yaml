@@ -1,0 +1,14 @@
+# config/agent_model/guardrails.yaml
+# Runtime guardrail rules (brick-agent-plan Phase 4.5).
+# Loaded by src/runtime/guardrails.py; values merge over the built-in
+# defaults in that module (a missing file never breaks the runtime).
+sql:
+  allow_only_select: true
+  forbidden_keywords: [drop, alter, delete, insert, update, truncate, pragma, attach, detach]
+  max_columns_per_query: 20
+okf:
+  required_lint_before_ask: true
+  max_rules_per_answer: 10
+mentor:
+  min_validation_samples: 50
+  min_improvement_threshold: 0.02
