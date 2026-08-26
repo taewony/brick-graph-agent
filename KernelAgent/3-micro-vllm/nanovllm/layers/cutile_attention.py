@@ -153,7 +153,7 @@ if HAS_CUTILE:
         for j in range(0, Tc):
             token_start = j * TILE_N
             logical_block = token_start // BLOCK_SIZE
-            block_tile = (token_start % BLOCK_SIZE) // TILE_N
+            block_tile = token_start % BLOCK_SIZE
             physical_block_id = ct.load(block_table, index=(batch_idx, logical_block), shape=(1, 1)).reshape(())
 
             k = ct.load(
@@ -300,18 +300,20 @@ def _cutile_fmha_prefill_padded(
     num_kv_heads = k.shape[1]
     head_dim = q.shape[2]
 
-    q_padded = torch.zeros((B, num_heads, pad_len_q, head_dim), dtype=q.dtype, device=q.device)
-    k_padded = torch.zeros((B, num_kv_heads, pad_len_k, head_dim), dtype=k.dtype, device=k.device)
-    v_padded = torch.zeros((B, num_kv_heads, pad_len_k, head_dim), dtype=v.dtype, device=v.device)
+    q_padded = torch.empty((B, num_heads, pad_len_q, head_dim), dtype=q.dtype, device=q.device)
+    k_padded = torch.empty((B, num_kv_heads, pad_len_k, head_dim), dtype=k.dtype, device=k.device)
+    v_padded = torch.empty((B, num_kv_heads, pad_len_k, head_dim), dtype=v.dtype, device=v.device)
 
+    cu_q = cu_seqlens_q.tolist()
+    cu_k = cu_seqlens_k.tolist()
     for b in range(B):
-        start_q = int(cu_seqlens_q[b].item())
-        end_q = int(cu_seqlens_q[b + 1].item())
+        start_q = cu_q[b]
+        end_q = cu_q[b + 1]
         seqlen_q = end_q - start_q
         q_padded[b, :, :seqlen_q, :] = q[start_q:end_q].transpose(0, 1)
 
-        start_k = int(cu_seqlens_k[b].item())
-        end_k = int(cu_seqlens_k[b + 1].item())
+        start_k = cu_k[b]
+        end_k = cu_k[b + 1]
         seqlen_k = end_k - start_k
         if block_table is not None and k_cache is not None and k_cache.numel() > 0:
             block_size = k_cache.shape[1]
@@ -337,8 +339,8 @@ def _cutile_fmha_prefill_padded(
 
     out = torch.empty((total_tokens_q, num_heads, head_dim), dtype=q.dtype, device=q.device)
     for b in range(B):
-        start_q = int(cu_seqlens_q[b].item())
-        end_q = int(cu_seqlens_q[b + 1].item())
+        start_q = cu_q[b]
+        end_q = cu_q[b + 1]
         seqlen_q = end_q - start_q
         out[start_q:end_q] = padded_out[b, :, :seqlen_q, :].transpose(0, 1)
 
@@ -389,11 +391,13 @@ def cutile_fmha_prefill(
         if block_size % tile_n != 0:
             tile_n = block_size
 
+    cu_q = cu_seqlens_q.tolist()
+    cu_k = cu_seqlens_k.tolist()
     for b in range(batch_size):
-        start_q = int(cu_seqlens_q[b].item())
-        end_q = int(cu_seqlens_q[b + 1].item())
-        start_k = int(cu_seqlens_k[b].item())
-        end_k = int(cu_seqlens_k[b + 1].item())
+        start_q = cu_q[b]
+        end_q = cu_q[b + 1]
+        start_k = cu_k[b]
+        end_k = cu_k[b + 1]
         seqlen_q = end_q - start_q
         seqlen_k = end_k - start_k
         if seqlen_q <= 0:
