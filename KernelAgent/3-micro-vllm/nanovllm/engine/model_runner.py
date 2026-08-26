@@ -97,6 +97,7 @@ class ModelRunner:
                     errors.append(f"cuda_core={ex}")
                     print(f"WARNING: Green Context initialization failed: {'; '.join(errors)}. Falling back to default context.")
                     self.use_green_contexts = False
+        self._alloc_persistent_buffers()
         self.warmup_model()
         self.allocate_kv_cache()
         if not self.enforce_eager:
@@ -193,11 +194,30 @@ class ModelRunner:
                 module.v_cache = self.kv_cache[1, layer_id]
                 layer_id += 1
 
+    def _alloc_persistent_buffers(self):
+        config = self.config
+        self._max_num_blocks = (config.max_model_len + self.block_size - 1) // self.block_size
+        self._buf_input_ids     = torch.empty(config.max_num_batched_tokens, dtype=torch.int64, device="cuda")
+        self._buf_positions     = torch.empty(config.max_num_batched_tokens, dtype=torch.int64, device="cuda")
+        self._buf_slot_mapping  = torch.empty(config.max_num_batched_tokens, dtype=torch.int32, device="cuda")
+        self._buf_cu_seqlens_q  = torch.empty(config.max_num_seqs + 1, dtype=torch.int32, device="cuda")
+        self._buf_cu_seqlens_k  = torch.empty(config.max_num_seqs + 1, dtype=torch.int32, device="cuda")
+        self._buf_context_lens  = torch.empty(config.max_num_seqs, dtype=torch.int32, device="cuda")
+        self._buf_block_tables  = torch.empty(config.max_num_seqs, self._max_num_blocks, dtype=torch.int32, device="cuda")
+        self._buf_temperatures  = torch.empty(config.max_num_seqs, dtype=torch.float32, device="cuda")
+
+    def _h2d(self, dst: torch.Tensor, values: list, dtype) -> torch.Tensor:
+        """Copy a Python list into a preallocated CUDA buffer slice (no per-step allocation)."""
+        n = len(values)
+        dst[:n].copy_(torch.tensor(values, dtype=dtype, device="cpu"), non_blocking=True)
+        return dst[:n]
+
     def prepare_block_tables(self, seqs: list[Sequence]):
         max_len = max(len(seq.block_table) for seq in seqs)
-        block_tables = [seq.block_table + [-1] * (max_len - len(seq.block_table)) for seq in seqs]
-        block_tables = torch.tensor(block_tables, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
-        return block_tables
+        rows = [seq.block_table + [-1] * (max_len - len(seq.block_table)) for seq in seqs]
+        cpu = torch.tensor(rows, dtype=torch.int32, device="cpu")
+        self._buf_block_tables[:len(seqs), :max_len].copy_(cpu, non_blocking=True)
+        return self._buf_block_tables[:len(seqs), :max_len]
 
     def prepare_prefill(self, seqs: list[Sequence]):
         input_ids = []
@@ -211,7 +231,7 @@ class ModelRunner:
         for seq in seqs:
             seqlen = len(seq)
             input_ids.extend(seq[seq.num_cached_tokens:])
-            positions.extend(list(range(seq.num_cached_tokens, seqlen)))
+            positions.extend(range(seq.num_cached_tokens, seqlen))
             seqlen_q = seqlen - seq.num_cached_tokens
             seqlen_k = seqlen
             cu_seqlens_q.append(cu_seqlens_q[-1] + seqlen_q)
@@ -225,15 +245,15 @@ class ModelRunner:
                 if i != seq.num_blocks - 1:
                     end = start + self.block_size
                 else:
-                    end = start + seq.last_block_num_tokens 
-                slot_mapping.extend(list(range(start, end)))
+                    end = start + seq.last_block_num_tokens
+                slot_mapping.extend(range(start, end))
         if cu_seqlens_k[-1] > cu_seqlens_q[-1]:    # prefix cache
             block_tables = self.prepare_block_tables(seqs)
-        input_ids = torch.tensor(input_ids, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
-        positions = torch.tensor(positions, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
-        cu_seqlens_q = torch.tensor(cu_seqlens_q, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
-        cu_seqlens_k = torch.tensor(cu_seqlens_k, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
-        slot_mapping = torch.tensor(slot_mapping, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
+        input_ids = self._h2d(self._buf_input_ids, input_ids, torch.int64)
+        positions = self._h2d(self._buf_positions, positions, torch.int64)
+        cu_seqlens_q = self._h2d(self._buf_cu_seqlens_q, cu_seqlens_q, torch.int32)
+        cu_seqlens_k = self._h2d(self._buf_cu_seqlens_k, cu_seqlens_k, torch.int32)
+        slot_mapping = self._h2d(self._buf_slot_mapping, slot_mapping, torch.int32)
         set_context(True, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k, slot_mapping, None, block_tables, use_cutile=self.use_cutile)
         return input_ids, positions
 
@@ -246,21 +266,18 @@ class ModelRunner:
             input_ids.append(seq.last_token)
             positions.append(len(seq) - 1)
             context_lens.append(len(seq))
-            slot_mapping.append(seq.block_table[-1] * self.block_size + seq.last_block_num_tokens  - 1)
-        input_ids = torch.tensor(input_ids, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
-        positions = torch.tensor(positions, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
-        slot_mapping = torch.tensor(slot_mapping, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
-        context_lens = torch.tensor(context_lens, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
+            slot_mapping.append(seq.block_table[-1] * self.block_size + seq.last_block_num_tokens - 1)
+        input_ids = self._h2d(self._buf_input_ids, input_ids, torch.int64)
+        positions = self._h2d(self._buf_positions, positions, torch.int64)
+        slot_mapping = self._h2d(self._buf_slot_mapping, slot_mapping, torch.int32)
+        context_lens = self._h2d(self._buf_context_lens, context_lens, torch.int32)
         block_tables = self.prepare_block_tables(seqs)
         set_context(False, slot_mapping=slot_mapping, context_lens=context_lens, block_tables=block_tables, use_cutile=self.use_cutile)
         return input_ids, positions
 
     def prepare_sample(self, seqs: list[Sequence]):
-        temperatures = []
-        for seq in seqs:
-            temperatures.append(seq.temperature)
-        temperatures = torch.tensor(temperatures, dtype=torch.float32, pin_memory=True).cuda(non_blocking=True)
-        return temperatures
+        temperatures = [seq.temperature for seq in seqs]
+        return self._h2d(self._buf_temperatures, temperatures, torch.float32)
 
     @torch.inference_mode()
     def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):
