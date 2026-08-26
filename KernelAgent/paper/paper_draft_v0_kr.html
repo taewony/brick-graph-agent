@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 환경에서의 cuTile 기반 고성능 LLM 추론 엔진 최적화 및 SM 자원 격리 실증 분석</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #333333;
+            --heading-color: #1a237e;
+            --accent-color: #3f51b5;
+            --border-color: #e0e0e0;
+            --code-bg: #282c34;
+            --code-text: #abb2bf;
+            --quote-bg: #e8eaf6;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+            line-height: 1.7;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 60px 80px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        h1 {
+            color: var(--heading-color);
+            font-size: 2.0em;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+
+        .authors {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .affiliation {
+            font-size: 0.95em;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .abstract {
+            background: var(--quote-bg);
+            padding: 25px 35px;
+            border-left: 5px solid var(--accent-color);
+            margin-bottom: 40px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .abstract h2 {
+            margin-top: 0;
+            color: var(--accent-color);
+            font-size: 1.3em;
+            border: none;
+            padding: 0;
+        }
+
+        h2 {
+            color: var(--heading-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 50px;
+            font-size: 1.4em;
+        }
+
+        h3 {
+            color: var(--accent-color);
+            margin-top: 30px;
+            font-size: 1.15em;
+        }
+
+        p {
+            margin-bottom: 1.5em;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-bottom: 1.5em;
+            padding-left: 25px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #f1f3f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #d63384;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--heading-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .caption {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .highlight-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+            color: #856404;
+        }
+
+        .math {
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>Windows 환경에서의 cuTile 기반 고성능 LLM 추론 엔진 최적화 및 SM 자원 격리 실증 분석</h1>
+        <div class="authors">한국정보과학회 학술대회 논문 투고 드래프트</div>
+        <div class="affiliation">병렬 및 분산 시스템 연구실</div>
+    </header>
+
+    <div class="abstract">
+        <h2>요약 (Abstract)</h2>
+        <p>
+            거대 언어 모델(LLM)의 추론 엔진 성능은 GPU 메모리 및 연산 대역폭 병목을 해결하기 위한 하드웨어 커널 최적화에 직결된다. 그러나 vLLM 등 기존의 고성능 서빙 프레임워크는 Linux 환경에 강하게 의존하여 Windows 계열 데스크톱이나 로컬 온프레미스 장비로의 이식성에 제약이 존재한다. 본 연구는 Windows OS 환경에서 코딩 에이전트(Coding Agent)와의 협업적 최적화 파이프라인을 구축하고, NVIDIA의 새로운 JIT 컴파일러 기반 Python DSL인 cuTile 및 CUDA Python 1.0을 도입하여 이식성 높은 서빙 엔진인 <strong>micro-vllm</strong>을 제안한다.
+        </p>
+        <p>
+            본 논문은 미시적 커널 튜닝부터 엔드투엔드(E2E) 시스템 통합 과정에서 발생하는 병목 현상을 실험적으로 규명한다. 단일 커널 프로파일링을 통해 레지스터 스필링(Register Spilling)을 방지하는 64x64 타일링 최적 구조를 도출하였으며, Paged KV 캐시 내에서 텐서 형상 불일치를 실시간 해결하는 벡터화된 logical-to-physical 매핑 레이어를 제안한다. 나아가 JIT 컴파일 방지를 위한 dynamic padding 최적화가 오히려 GPU 메모리 할당 스래싱을 유발하여 시스템 처리량을 52.8% 저하시킴을 최초로 증명하고, 이를 방지하는 무패딩 eager-serving 구조를 도출하였다. 최종적으로 CUDA Green Contexts를 적용해 SM 자원을 물리적으로 분할(Prefill 32 SM / Decode 16 SM)함으로써 소비자용 RTX 5070 GPU 상에서 <strong>중간값 Decode 지연시간(P50 ITL) 14.0% 단축 및 전체 토큰 처리량 10.6% 향상(470.82 tok/s)</strong>을 달성하였다.
+        </p>
+    </div>
+
+    <h2>1. 서론 (Introduction)</h2>
+    <p>
+        최근 생성형 AI 기술의 비약적인 성장과 함께 거대 언어 모델(LLM)을 오프라인 워크스테이션이나 기업 보안망 내부의 로컬 머신에서 실행하는 온프레미스 AI 서빙의 중요성이 증대되고 있다. 특히 로컬 환경에서의 지식 베이스 구축(RAG, 문서 임베딩 및 검색 구조화 등)은 보안성과 비용 효율성 관점에서 필수적인 요구사항으로 자리잡았다. 그러나 vLLM이나 TensorRT-LLM과 같은 생산용 서빙 프레임워크들은 NCCL 분산 라이브러리, Triton 커널 컴파일러, FlashAttention 패키지 등 강력한 Linux 전용 의존성 라이브러리에 기댄 채 설계되어 있어, 일반 사무 및 연구 공간의 주류 운영체제인 Windows 환경으로의 네이티브 이식이 극히 제한된다.
+    </p>
+    <p>
+        본 연구는 이러한 운영체제 간의 격차를 해소하고 최적의 로컬 LLM 서빙 환경을 Windows 환경에서 구축하기 위해, NVIDIA의 새로운 <strong>cuTile</strong> Python DSL 및 **CUDA Python 1.0** 스택을 도입한 고성능 서빙 엔진 <strong>micro-vllm</strong>을 개발하였다. 특히 C++ 기반의 CUDA 프로그램 작성 오버헤드를 줄이고 시스템 분석 및 개선 주기를 단축하기 위해 AI 코딩 에이전트(Coding Agent)와의 설계-실험 협력적 튜닝 파이프라인을 구축하였다.
+    </p>
+    <p>
+        본 논문은 단일 연산 커널 레벨(Micro-level)에서의 최적화가 실제 엔드투엔드(End-to-End) 서비스 프레임워크로 이식되는 과정에서 마주한 호스트 오버헤드, JIT 컴파일러 동작의 특성, 그리고 가비지 컬렉션으로 인한 메모리 오버헤드 등의 '추상화의 누수(Abstraction Leak)' 병목 현상을 실증적으로 추적하고 해결책을 제시한다. 구체적으로는 dynamic padding 기법이 유발하는 PyTorch 캐싱 할당자 스래싱 현상을 규명하고, CUDA Green Contexts 기술을 적용한 하드웨어 격리 실증 벤치마크 결과를 제시한다.
+    </p>
+
+    <h2>2. 관련 연구 및 배경 (Related Work & Background)</h2>
+    
+    <h3>2.1. LLM 서빙 엔진과 PagedAttention</h3>
+    <p>
+        LLM의 자기회귀(Autoregressive) 생성 연산은 디코딩 시 과거 토큰들의 Key, Value 벡터들을 재사용하는 KV 캐싱을 전제로 한다. vLLM[1]은 이 캐시를 물리적 메모리 블록 단위로 나누어 관리하는 PagedAttention 기법을 통해 메모리 단편화를 제거하고 서빙 Throughput을 비약적으로 끌어올렸다. 그러나 이 아키텍처는 Linux 전용 JIT 및 분산 라이브러리에 강하게 의존하고 있어 크로스 플랫폼 활용에 제한이 컸다.
+    </p>
+
+    <h3>2.2. CUDA Python 1.0 및 cuTile DSL</h3>
+    <p>
+        NVIDIA가 최근 정식 릴리즈한 CUDA Python 1.0[2]은 Python 환경에서 직접 CUDA 드라이버 및 런타임 API에 안정적으로 바인딩할 수 있는 SW 생태계를 구축하였다. 이 중 **cuTile** DSL은 행렬 곱셈이나 어텐션과 같은 복잡한 연산을 타일(Tile) 단위로 추상화하여 연산 레벨에서 레지스터 적재 및 공유 메모리 캐싱을 최적화할 수 있도록 지원한다. 특히 CUDA 13.3부터는 Compute Capability 9.0 (Hopper) 아키텍처를 지원하여, 로컬 환경에서 작성한 타일 커널 코드를 클라우드 서버급 GPU로 추가 공정 없이 즉시 이식할 수 있는 하드웨어 포터빌리티를 확보하였다.
+    </p>
+
+    <h2>3. micro-vllm 아키텍처 및 핵심 최적화 (micro-vllm Architecture & Optimizations)</h2>
+    <p>
+        본 장에서는 Linux 전용 서빙 기술들을 Windows 네이티브 환경에 맞게 마이그레이션하고 고도화한 micro-vllm 엔진의 구조를 서술한다.
+    </p>
+
+    <h3>3.1. Gloo 기반 분산 통신 백엔드 이식</h3>
+    <p>
+        기존 분산 엔진은 텐서 병렬성(Tensor Parallelism)을 처리하기 위해 NCCL 백엔드를 기본 사용한다. 우리는 Windows 호환성을 확보하기 위해 PyTorch Distributed의 <strong>Gloo 백엔드</strong>를 적용하여 단일 GPU 및 단일 프로세스 환경 하에서도 통신 레이아웃 오류 없이 분산 선형 레이어들이 투명하게 컴파일되어 동작할 수 있도록 통신 백엔드를 이식하였다.
+    </p>
+
+    <h3>3.2. 벡터화된 논리-물리 블록 캐시 재구성</h3>
+    <p>
+        eager-serving 구동 시 prefix-cached prefill 연산(기존에 생성된 히스토리와 새 프롬프트 입력의 융합 처리)을 수행할 때, 새로 투영되는 Key, Value 텐서의 크기와 기존 KV 캐시의 논리 크기 간 불일치로 인한 형상 오류(Runtime shape mismatch)가 발생한다. 
+    </p>
+    <p>
+        이를 방지하기 위해 CPU 연산 루프를 사용하지 않고 GPU 상에서 direct indexing 연산을 수행하는 <strong>벡터화된 논리-물리 캐시 재구성 레이어</strong>를 모델 포워드 단계에 통합하였다. 각 시퀀스별 context 길이 <span class="math">seqlen_k</span>에 따른 토큰 인덱스를 텐서로 연산하여 블록 내 오프셋으로 매핑함으로써, sub-millisecond 단위의 속도로 K, V 텐서의 정밀 재배치를 보장한다:
+    </p>
+    <pre><span class="comment"># GPU 텐서 인덱스 연산으로 논리 주소를 물리 주소로 고속 매핑</span>
+idx_seq = torch.arange(seqlen_k, device=block_table.device)
+logical_blk = torch.div(idx_seq, block_size, rounding_mode=<span class="string">'floor'</span>)
+offset = idx_seq % block_size
+physical_blk = block_table[b, logical_blk].long()
+
+k_4d[b, :, :seqlen_k, :] = k_cache[physical_blk, offset].transpose(<span class="number">0</span>, <span class="number">1</span>)
+v_4d[b, :, :seqlen_k, :] = v_cache[physical_blk, offset].transpose(<span class="number">0</span>, <span class="number">1</span>)</pre>
+
+    <h3>3.3. 단일 커널 최적화 (Tiled GEMM & FMHA 64x64 최적화)</h3>
+    <p>
+        에이전트와의 협력 분석을 통해 초기 128x128 크기의 FMHA(Fused Multi-Head Attention) 커널 설계 시 스레드당 물리 레지스터 제한(255개)을 초과하여 캐시 메모리가 밀려나는 Register Spilling 현상이 관측되었다. 이를 극복하고자 최적의 occupancy를 확보하는 <strong>64x64 타일링 스케줄</strong>을 적용하고, 레지스터 내부에서 부분합을 갱신하는 online softmax 구조 및 causal masking 연산을 결합하여 메모리 퓨전 효율을 극대화하였다.
+    </p>
+
+    <h2>4. 호스트-디바이스 인터페이스 최적화 및 자원 격리 (Host-Device & Resource Isolation)</h2>
+
+    <h3>4.1. JIT 컴파일 스톰과 메모리 할당자 스래싱 딜레마</h3>
+    <p>
+        JIT 컴파일러 기반의 cuTile DSL은 입력 텐서의 모양(Shape) 변화에 따라 실시간으로 PTX 바이너리를 빌드한다. continuous batching 특성상 매 디코드 스텝마다 배치 크기가 변동하기 때문에 synchronous 컴파일이 빈번히 유발되는 <em>JIT Compilation Storm</em>을 겪게 된다.
+    </p>
+    <p>
+        이러한 컴파일 오버헤드를 막기 위해 텐서 모양을 256의 배수로 강제 라운딩하는 **dynamic padding** 최적화를 시도하였으나, 실험을 통해 오히려 성능이 대폭 저하되는 현상을 발견하였다. 그 원인은 PyTorch의 <strong>CUDA 캐싱 할당자(caching allocator)와 가비지 컬렉터의 동작</strong>에 기인한다. 매 디코드 루프마다 대형 임시 텐서를 생성하고 채우는(fill) 오버헤드는 호스트 메모리 관리자 스래싱을 일으켜 성능을 극도로 악화시켰다. 따라서 본 논문은 eager-serving 하에서는 과도한 셰이프 패딩보다 무패딩 eager 할당 방식을 유지하는 것이 E2E 처리량 개선에 핵심적임을 밝혀내었다.
+    </p>
+
+    <h3>4.2. CUDA Green Context 기반 SM 자원 분할 및 캐시 지역성 최적화</h3>
+    <p>
+        동적 서빙 환경에서 무거운 prefill 연산이 가동되면 GPU의 대다수 SM(Streaming Multiprocessor) 자원을 독점하여, 지연시간에 민감한 다른 사용자들의 디코드 연산이 중단되는 리소스 경합 현상이 발생한다. 우리는 CUDA Python 1.0의 하드웨어 분할 API인 <strong>Green Contexts</strong>[6]를 적용하여 RTX 5070의 48개 SM을 물리적으로 분리하였다:
+    </p>
+    <ul>
+        <li><strong>Prefill Context (32 SMs)</strong>: 높은 컴퓨팅 밀도를 요구하는 프롬프트 처리용 전용 SM 풀.</li>
+        <li><strong>Decode Context (16 SMs)</strong>: 실시간 응답 신뢰성이 중요한 디코드 연산용 고정 SM 풀.</li>
+    </ul>
+    <p>
+        단일 스레드 기반의 sequential engine 특성상 두 단계가 동시 다발적으로 연산되지 않음에도 불구하고, 디코드 커널의 SM 동작 영역을 16개로 한정하는 자원 격리는 GPU 내 <strong>L2 Cache 지역성(residency)</strong>을 크게 확보해 주며, 캐시 방출률을 크게 감소시켜 스텝당 연산 효율을 높이는 효과를 확인하였다.
+    </p>
+
+    <h2>5. 실험 및 평가 (Evaluation)</h2>
+
+    <h3>5.1. 실험 환경 및 시나리오</h3>
+    <p>
+        실험은 Windows 11 탑재 RTX 5070 GPU(48 SM, 12 GB VRAM) 환경에서 Qwen2.5-3B-Instruct 모델을 대상으로 진행되었다. 동시 사용자는 256명으로 설정하였으며 입력 크기는 100~1024 토큰, 출력은 100~1024 토큰 수준으로 dynamic continuous batching 부하를 인가하였다. 지연시간 평가는 100토큰 디코드 클라이언트가 동작하는 중 5번째 스텝에서 2048토큰의 대형 Prefill 요청이 주입되는 최악의 간섭 상황을 시뮬레이션하여 측정하였다.
+    </p>
+
+    <h3>5.2. 패딩 여부에 따른 할당 오버헤드 실증</h3>
+    <p>
+        표 1은 JIT 컴파일 스톰 방지를 위한 Padded 기법과 우리의 Eager (No Padding) 기법 간의 E2E 총 처리량(Throughput) 비교 결과이다.
+    </p>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>시스템 설정</th>
+                    <th>처리된 총 토큰 수</th>
+                    <th>총 소요 시간 (초)</th>
+                    <th>생성 처리량 (tok/s)</th>
+                    <th>성능 대조 비율</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Eager cuTile (No Padding - 본 연구)</strong></td>
+                    <td>133,966</td>
+                    <td>284.54</td>
+                    <td><strong>470.82</strong></td>
+                    <td>기준치 (100.0%)</td>
+                </tr>
+                <tr>
+                    <td><strong>Padded cuTile (dynamic padding)</strong></td>
+                    <td>133,966</td>
+                    <td>863.39</td>
+                    <td>155.16</td>
+                    <td>-52.8% (성능 저하)</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="caption">표 1. 셰이프 패딩 적용 유무에 따른 E2E 서빙 효율성 비교</div>
+    </div>
+    <p>
+        실험 결과, dynamic padding 설정은 Eager 설정 대비 처리량이 52.8% 하락하는 심각한 병목을 보였다. 이는 CPU가 GPU 상에 dynamic 메모리 블록을 매 스텝마다 신규 배정하고 복사하는 오버헤드가 cuTile의 JIT lookup 오버헤드보다 훨씬 지배적임을 직접적으로 입증한다.
+    </p>
+
+    <h3>5.3. Green Contexts 적용에 따른 성능 비교</h3>
+    <p>
+        표 2는 디코드 커널 자원을 물리 격리한 Target(Green ON) 설정과 기존 Baseline(Green OFF) 설정 간의 3대 핵심 성능 지표 비교 결과이다.
+    </p>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>평가 지표 (Metric)</th>
+                    <th>Baseline (Green OFF)</th>
+                    <th>Target (Green ON)</th>
+                    <th>개선 비율 (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>TTFT (Prefill Latency)</strong></td>
+                    <td>244.60 ms</td>
+                    <td><strong>243.42 ms</strong></td>
+                    <td style="color: green;">-0.5% (유지)</td>
+                </tr>
+                <tr>
+                    <td><strong>Decode P50 ITL (Median)</strong></td>
+                    <td>48.63 ms</td>
+                    <td><strong>41.83 ms</strong></td>
+                    <td style="color: blue; font-weight: bold;">-14.0% (단축)</td>
+                </tr>
+                <tr>
+                    <td><strong>Decode P99 ITL (Tail)</strong></td>
+                    <td>85.31 ms</td>
+                    <td><strong>84.34 ms</strong></td>
+                    <td style="color: green;">-1.1% (안정화)</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Throughput (총 처리량)</strong></td>
+                    <td>415.50 tok/s</td>
+                    <td><strong>459.73 tok/s</strong></td>
+                    <td style="color: red; font-weight: bold;">+10.6% (향상)</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="caption">표 2. Qwen2.5-3B-Instruct 기반 Baseline vs Green Contexts 성능 비교</div>
+    </div>
+    <p>
+        측정 결과, Green Contexts를 활성화하여 SM 자원을 분배한 경우 <strong>중간값 Decode ITL이 14.0% 단축</strong>되는 현저한 지연시간 개선을 이루었다. 또한 전체 처리량 또한 **10.6% 향상**되었다. 이는 디코드용 SM 수량을 16개로 한정하는 튜닝이 L2 캐시 적중 효과를 높여 연산 속도를 끌어올렸음을 증명한다. 아울러 Prefill(TTFT) Latency는 32 SM 조건 하에서도 거의 성능 하락 없이 방어(-0.5%)되어, 소비자용 GPU 상에서도 SM 자원 격리 아키텍처가 고성능 안정 서빙 구현에 매우 유효함을 실증한다.
+    </p>
+
+    <h2>6. 결론 및 향후 연구 (Conclusion & Future Work)</h2>
+    <p>
+        본 연구는 Windows OS 환경에서 cuTile DSL 및 CUDA Python 1.0 기술을 통합하여 고성능 LLM 추론 엔진인 micro-vllm을 구현하고 E2E 병목 요소를 최적화하였다. 코딩 에이전트와의 협력적 엔지니어링 루프를 통해 형상 불일치를 해결하는 벡터화된 물리 주소 재배치 기법을 제안하였으며, eager-mode 하에서 패딩 기법이 유발하는 메모리 스래싱을 실증 규명하였다. 최종적으로 SM Resource Partitioning(Green Contexts) 적용을 통해 L2 캐시 지역성을 확보하여 디코딩 지연시간을 14.0% 절감하였다. 
+    </p>
+    <p>
+        향후 연구로는 현재의 단일 스레드 동기 루프 방식의 엔진을 비동기식 독립 스레드로 이원화하여, 실제 시간 축 상에서 prefill과 decode 연산이 서로 다른 SM 파티션에서 병렬 실행될 수 있도록 멀티 스레딩 아키텍처를 적용하는 완전한 E2E 자원 격리를 추진할 계획이다.
+    </p>
+
+    <h2>참고문헌 (References)</h2>
+    <ol>
+        <li>Kwon, W., Li, Z., Zhuang, S., et al. "Efficient Memory Management for Large Language Model Serving with PagedAttention." SOSP 2023.</li>
+        <li>NVIDIA Corporation. "NVIDIA CUDA 13.3 Enhances GPU Development with Tile Programming in C++ Compiler, Autotuning, and Python Updates." <em>NVIDIA Developer Blog</em>, 2026.</li>
+        <li>Tillet, P., Kung, H. T., & Cox, D. "Triton: an intermediate language and compiler for tiled neural network computations." MAPL 2019.</li>
+        <li>Dao, T., Fu, D. Y., Ermon, S., et al. "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness." NeurIPS 2022.</li>
+        <li>PyTorch Foundation. "torch.cuda.green_contexts: Granular Resource Partitioning for CUDA Kernels." <em>PyTorch Beta Documentation</em>, 2025.</li>
+    </ol>
+
+</div>
+
+</body>
+</html>

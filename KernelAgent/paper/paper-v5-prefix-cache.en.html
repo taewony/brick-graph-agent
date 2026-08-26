@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Windows-Native LLM Inference Engine Migration with Hybrid Prefill Dispatch and Prefix KV-Cache Evaluation</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --paper: #ffffff;
+      --text: #263238;
+      --muted: #64727d;
+      --heading: #12395b;
+      --accent: #0f6b7a;
+      --line: #d8e0e6;
+      --soft: #eef6f7;
+      --code: #1f2933;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 18px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.68;
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 48px 58px;
+      box-shadow: 0 10px 30px rgba(20, 40, 60, 0.08);
+    }
+    header {
+      border-bottom: 3px double var(--heading);
+      padding-bottom: 28px;
+      margin-bottom: 34px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 14px;
+      color: var(--heading);
+      font-size: 2rem;
+      line-height: 1.3;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.08rem;
+      line-height: 1.45;
+    }
+    .author { margin-top: 20px; font-weight: 700; }
+    .meta { margin-top: 8px; color: var(--muted); font-size: 0.94rem; }
+    nav {
+      margin: 24px 0 34px;
+      padding: 16px 18px;
+      background: var(--soft);
+      border: 1px solid #cde3e7;
+      border-radius: 6px;
+    }
+    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; white-space: nowrap; }
+    h2 {
+      margin-top: 38px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+      color: var(--heading);
+      font-size: 1.45rem;
+    }
+    h3 { margin-top: 26px; color: #1d4b63; font-size: 1.12rem; }
+    p { margin: 0.88rem 0; }
+    .abstract, .note {
+      padding: 18px 22px;
+      border-left: 5px solid var(--accent);
+      background: #f8fbfc;
+      border-radius: 6px;
+      margin: 18px 0;
+    }
+    .key-results {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      background: #fbfcfd;
+    }
+    .metric strong { display: block; color: var(--heading); font-size: 1.25rem; }
+    .metric span { display: block; color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 0.93rem;
+    }
+    th, td { border: 1px solid var(--line); padding: 9px 10px; vertical-align: top; }
+    th { background: #edf3f6; color: var(--heading); }
+    td.num, th.num { text-align: right; white-space: nowrap; }
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f1f4f6;
+      color: var(--code);
+      border-radius: 4px;
+    }
+    code { padding: 2px 5px; }
+    pre { padding: 14px; overflow-x: auto; }
+    ul, ol { padding-left: 1.45rem; }
+    .refs li { margin-bottom: 7px; }
+    footer {
+      margin-top: 46px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 760px) {
+      body { padding: 12px; }
+      main { padding: 28px 20px; }
+      h1 { font-size: 1.55rem; }
+      .key-results { grid-template-columns: 1fr 1fr; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Windows-Native LLM Inference Engine Migration with cuTile, Hybrid Prefill Dispatch, and Prefix KV-Cache Evaluation for Fixed-Context Agent Workloads</h1>
+    <div class="subtitle">Korean title: cuTile 기반 Windows-native LLM 추론 엔진 이식, Hybrid Prefill Dispatch, 그리고 고정 컨텍스트 Agent Workload에서의 Prefix KV Cache 실증</div>
+    <div class="author">Taewon Kim</div>
+    <div class="meta">HTML review draft v5 · Source: <code>KernelAgent/paper/paper-v5-prefix-cache.tex</code></div>
+  </header>
+
+  <nav aria-label="Document navigation">
+    <a href="#abstract">Abstract</a>
+    <a href="#intro">Introduction</a>
+    <a href="#design">System Design</a>
+    <a href="#method">Method</a>
+    <a href="#results">Results</a>
+    <a href="#discussion">Discussion</a>
+    <a href="#limits">Limitations</a>
+    <a href="#conclusion">Conclusion</a>
+  </nav>
+
+  <section id="abstract" class="abstract">
+    <h2>Abstract</h2>
+    <p>This study presents <strong>micro-vLLM</strong>, a Windows-native LLM inference engine artifact implemented with CUDA Python 1.0 and a cuTile-style kernel development workflow. Rather than claiming performance superiority over mature Linux serving stacks, micro-vLLM is designed as an educational systems artifact that exposes prefill, decode, paged KV cache, prefix caching, CUDA Green Contexts, and memory-allocation bottlenecks in a reproducible Windows GPU environment.</p>
+    <p>The artifact follows a staged migration path from tiled MatMul to fused multi-head attention, a minimal LLM-from-scratch loop, and finally a nano-vLLM-style serving engine. Prior measurements show that WSL2 FlashAttention achieves 2138.55 tok/s on average, approximately 4.62x faster than the initial Windows-native cuTile backend at 463.35 tok/s. After repairing the cuTile KV-cache store path and introducing hybrid prefill dispatch, the eager-hybrid cuTile configuration improves to 557.66 tok/s, a 20.4% gain over the initial cuTile mean. CUDA Graph decode replay is functionally enabled, but it degrades throughput to roughly 393 tok/s. This result motivates a conservative framing: micro-vLLM is useful for migration, inspection, and education rather than immediate production replacement.</p>
+    <p>We further evaluate fixed-context agent workloads, where requests share long static prefixes such as system prompts, database schemas, <code>SKILL.md</code> files, or course contexts. On an RTX 5070 target PC, warm prefix KV-cache reuse reduces computed prefill tokens to 64 in all tested settings and reduces TTFT by 41.1%, 66.1%, and 79.7% for 1024-, 2048-, and 3072-token static prefixes, respectively. The negative-control condition with changed prefixes yields 0.0% cache hit and near no-cache TTFT. End-to-end throughput does not consistently improve in the 64-token generation benchmark because decode dominates total runtime.</p>
+    <p><strong>Keywords:</strong> LLM serving, CUDA Python 1.0, cuTile, nano-vLLM, prefix KV cache, Windows-native GPU computing, educational systems artifact</p>
+  </section>
+
+  <section class="key-results" aria-label="Key results">
+    <div class="metric"><strong>4.62x</strong><span>WSL2 FlashAttention throughput advantage over Windows cuTile</span></div>
+    <div class="metric"><strong>64 tokens</strong><span>computed prefill under warm cache</span></div>
+    <div class="metric"><strong>79.7%</strong><span>TTFT reduction with a 3072-token static prefix</span></div>
+    <div class="metric"><strong>0.0%</strong><span>cache hit in the prefix-changed negative control</span></div>
+    <div class="metric"><strong>557.66 tok/s</strong><span>eager-hybrid cuTile result, +20.4% over initial cuTile mean</span></div>
+  </section>
+
+  <section id="intro">
+    <h2>1. Introduction</h2>
+    <p>As generative AI systems become more widely deployed, there is growing demand for running LLMs on local PCs, laboratory machines, private networks, and offline educational environments. Applications such as RAG, natural-language database querying, CUDA kernel programming tutors, and local knowledge agents often reuse a fixed body of context while answering short user questions. In these settings, understanding local inference latency, memory behavior, and KV-cache reuse is as important as calling a remote cloud API.</p>
+    <p>Most high-performance LLM serving stacks, however, are tightly coupled to the Linux GPU software ecosystem. vLLM, TensorRT-LLM, FlashAttention, Triton, and NCCL-based distributed execution provide strong performance, but they are difficult to modify or teach step by step in a Windows-native environment. WSL2 is a practical workaround, but it still creates a boundary for Windows-native application development and GPU runtime education.</p>
+    <p>This paper therefore focuses on an <strong>educational systems artifact</strong>, not on absolute peak performance. micro-vLLM connects CUDA Python 1.0, a cuTile-style kernel workflow, tiled MatMul, FMHA, a minimal autoregressive loop, paged KV cache, prefix cache, continuous batching, and Green Contexts. The revised contribution centers on <strong>fixed-context agent workloads</strong> and a measured <strong>prefix KV-cache evaluation</strong>.</p>
+    <h3>Contributions</h3>
+    <ol>
+      <li><strong>Windows-native educational systems artifact:</strong> micro-vLLM is organized as a staged migration path from MatMul and FMHA to LLM-from-scratch and nano-vLLM-style serving.</li>
+      <li><strong>Fixed-context agent benchmark:</strong> the paper defines agent workloads that repeatedly reuse system prompts, database schemas, <code>SKILL.md</code> files, and course contexts.</li>
+      <li><strong>Prefix KV-cache evidence:</strong> measured results show that warm cache reduces computed prefill to 64 tokens and reduces TTFT from 41.1% to 79.7% across 1024/2048/3072-token static prefixes.</li>
+      <li><strong>Hybrid prefill dispatch and CUDA Graph negative result:</strong> after repairing the cuTile KV-store path, eager-hybrid cuTile reaches 557.66 tok/s, a 20.4% gain over the initial cuTile mean; CUDA Graph decode replay is functionally available but reduces throughput to roughly 393 tok/s under the current kernel granularity and graph bucket conditions.</li>
+      <li><strong>Serving-loop bottleneck analysis:</strong> the paper reports WSL2 FlashAttention baseline results, allocator thrashing, and mixed Green Contexts results to show that isolated kernel improvements do not automatically guarantee end-to-end serving gains.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>2. Background</h2>
+    <h3>LLM Serving Loop</h3>
+    <p>Autoregressive LLM serving consists of a prefill phase, which processes the prompt, and a decode phase, which generates one token at a time. Prefill is sensitive to prompt length and attention workload, while decode is sensitive to scheduler overhead, memory bandwidth, KV-cache access, and kernel-launch overhead at each token step. The same engine can therefore react very differently depending on whether a workload is prefill-dominated or decode-dominated.</p>
+    <h3>Paged KV Cache and Prefix Cache</h3>
+    <p>Paged KV cache manages Key/Value cache memory in blocks to reduce fragmentation and support dynamic batching. Prefix cache adds token-identical prefix reuse. If a new request shares the same token prefix as a previous request, the engine can reuse the corresponding KV blocks and prefill only the new suffix. Cache hits depend on exact token-level stability, so timestamps, run identifiers, and user-specific metadata placed early in the prompt can eliminate reuse.</p>
+    <h3>CUDA Python 1.0, cuTile, and nano-vLLM</h3>
+    <p>CUDA Python 1.0 provides access to CUDA runtime and driver APIs from Python. A cuTile-style DSL expresses tile-level GPU kernels within a Python workflow, lowering the entry barrier compared with C++ CUDA while exposing more hardware behavior than high-level PyTorch operators. nano-vLLM is a compact reference for understanding vLLM-style serving, and micro-vLLM migrates that style into a Windows-native CUDA Python experimentation path.</p>
+  </section>
+
+  <section id="design">
+    <h2>3. System Design</h2>
+    <h3>Staged Kernel Migration</h3>
+    <table>
+      <thead><tr><th>Stage</th><th>Folder</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td><code>0-MatMul</code></td><td>Learning tiling, shared memory, swizzling, and GEMM baselines.</td></tr>
+        <tr><td class="num">1</td><td><code>1-FMHA</code></td><td>Implementing online softmax, causal masking, and fused attention.</td></tr>
+        <tr><td class="num">2</td><td><code>2-LLM-from-scratch</code></td><td>Building a minimal autoregressive loop, KV cache, and CUDA Graph experiments.</td></tr>
+        <tr><td class="num">3</td><td><code>3-micro-vllm</code></td><td>Implementing paged KV cache, prefix cache, continuous batching, and Green Contexts.</td></tr>
+      </tbody>
+    </table>
+    <h3>micro-vLLM Serving Architecture</h3>
+    <p>micro-vLLM implements a lightweight serving loop for Qwen-family models. The scheduler manages waiting and running sequences. The BlockManager handles KV-cache block allocation and hash-based prefix reuse. Each Sequence tracks prompt tokens, generated tokens, a block table, and the number of cached tokens. ModelRunner separates prefill and decode while preparing input IDs, positions, sequence lengths, slot mappings, and block tables.</p>
+    <p>In the prefix-cache path, the scheduler checks complete-block hashes during sequence allocation. When an identical prefix block exists, <code>seq.num_cached_tokens</code> increases, and <code>prepare_prefill</code> sends only the suffix after the cached prefix to the model. The key sequence length still reflects the full context, while the query sequence length reflects only the newly computed suffix.</p>
+    <h3>Fixed-Context Agent Workload</h3>
+    <pre>[static system prompt]
+[static policy / tool contract]
+[static DB schema or course context]
+[static examples or rubric]
+[dynamic user question]</pre>
+    <p>Text-to-SQL agents repeatedly include database schemas and SQL behavior rules. CUDA tutors repeatedly include course modules and grading rubrics. Educational knowledge agents repeatedly include selected OKF concept bundles. Once the first request loads the static prefix into the cache, later requests can prefill only the dynamic suffix.</p>
+  </section>
+
+  <section id="method">
+    <h2>4. Experimental Method</h2>
+    <p>The experiments were conducted on a Windows 11 target PC with an NVIDIA GeForce RTX 5070 GPU. The recorded environment has 48 SMs, approximately 12GB VRAM, and 48MB L2 cache. micro-vLLM used a Qwen-family model.</p>
+    <p>The prefix-cache benchmark was executed with <code>KernelAgent/3-micro-vllm/bench_prefix_cache.py</code>. For each static-prefix length, three conditions were compared.</p>
+    <table>
+      <thead><tr><th>Condition</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>no_cache</code></td><td>Clear the persistent hash table before each request and perform full prefill.</td></tr>
+        <tr><td><code>warm_cache</code></td><td>Prime the cache once and then reuse the same static prefix.</td></tr>
+        <tr><td><code>prefix_changed</code></td><td>Change the first prefix token as a negative control that prevents exact-prefix hits.</td></tr>
+      </tbody>
+    </table>
+    <p>Each condition ran 8 requests. Static-prefix lengths were set to 1024, 2048, and 3072 tokens. The dynamic suffix was fixed at 64 tokens, and the generation length was fixed at 64 tokens. The benchmark recorded cache hit ratio, cached tokens, computed prefill tokens, TTFT, end-to-end latency, decode P50/P99 ITL, and throughput.</p>
+  </section>
+
+  <section id="results">
+    <h2>5. Results</h2>
+    <h3>WSL2 FlashAttention Baseline vs. Windows cuTile</h3>
+    <table>
+      <thead><tr><th>Backend</th><th class="num">Runs</th><th class="num">Mean Time</th><th class="num">Mean Throughput</th><th class="num">Relative</th></tr></thead>
+      <tbody>
+        <tr><td>Windows cuTile</td><td class="num">3</td><td class="num">289.16 s</td><td class="num">463.35 tok/s</td><td class="num">1.00x</td></tr>
+        <tr><td>WSL2 FlashAttention</td><td class="num">4</td><td class="num">62.65 s</td><td class="num">2138.55 tok/s</td><td class="num">4.62x</td></tr>
+      </tbody>
+    </table>
+    <p>The result clearly shows that the Windows-native cuTile path is slower than the mature Linux attention stack. The paper therefore frames its contribution as Windows-native migration, inspectability, and educational experimentation rather than production throughput superiority.</p>
+
+
+    <h3>cuTile Hybrid Prefill Dispatch and CUDA Graph Replay</h3>
+    <p>The initial Windows-native cuTile backend achieved 463.35 tok/s on average. We then repaired the decode graph-capture path by replacing the PyTorch advanced-indexing KV-cache update with a cuTile KV-store kernel. We also introduced hybrid prefill dispatch: multi-sequence non-prefix prefill uses the batched padded wrapper to reduce host/kernel launch count, while single-sequence and prefix-cache prefill use direct or paged wrappers to avoid unnecessary tensor materialization.</p>
+    <table>
+      <thead><tr><th>cuTile Mode</th><th>CUDA Graph</th><th>Prefill</th><th class="num">Time</th><th class="num">Throughput</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td>Initial cuTile mean</td><td>off</td><td>eager baseline</td><td class="num">289.16 s</td><td class="num">463.35 tok/s</td><td>Initial Windows cuTile reference.</td></tr>
+        <tr><td>Hybrid eager</td><td>off</td><td>hybrid</td><td class="num">240.23 s</td><td class="num">557.66 tok/s</td><td>Current paper-positive cuTile result.</td></tr>
+        <tr><td>Hybrid graph</td><td>on</td><td>hybrid</td><td class="num">340.60 s</td><td class="num">393.32 tok/s</td><td>Capture succeeds but throughput regresses.</td></tr>
+        <tr><td>Padded graph</td><td>on</td><td>padded</td><td class="num">341.02 s</td><td class="num">392.84 tok/s</td><td>Confirms graph replay is the main bottleneck.</td></tr>
+        <tr><td>Direct graph</td><td>on</td><td>direct</td><td class="num">stopped early</td><td class="num">95-101 tok/s progress</td><td>Not viable for the 256-request benchmark.</td></tr>
+      </tbody>
+    </table>
+    <p>The eager-hybrid cuTile path improves throughput by 20.4% over the initial cuTile mean. In contrast, CUDA Graph replay is functionally repaired but currently performance-negative. This is an important systems lesson: a standard optimization mechanism must align with graph bucket replay behavior, kernel granularity, and paged decode memory access patterns to improve end-to-end serving.</p>
+    <h3>Prefix KV-Cache Results</h3>
+    <table>
+      <thead><tr><th class="num">Static Prefix</th><th class="num">Prompt</th><th class="num">Hit</th><th class="num">Prefill No</th><th class="num">Prefill Warm</th><th class="num">TTFT No</th><th class="num">TTFT Warm</th><th class="num">TTFT Red.</th><th class="num">Changed TTFT</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1024</td><td class="num">1088</td><td class="num">94.1%</td><td class="num">1088</td><td class="num">64</td><td class="num">146.98 ms</td><td class="num">86.56 ms</td><td class="num">41.1%</td><td class="num">148.18 ms</td></tr>
+        <tr><td class="num">2048</td><td class="num">2112</td><td class="num">97.0%</td><td class="num">2112</td><td class="num">64</td><td class="num">255.58 ms</td><td class="num">86.72 ms</td><td class="num">66.1%</td><td class="num">256.93 ms</td></tr>
+        <tr><td class="num">3072</td><td class="num">3136</td><td class="num">98.0%</td><td class="num">3136</td><td class="num">64</td><td class="num">381.76 ms</td><td class="num">77.47 ms</td><td class="num">79.7%</td><td class="num">389.61 ms</td></tr>
+      </tbody>
+    </table>
+    <p>Warm prefix cache reduces computed prefill tokens to 64 in all static-prefix settings. The TTFT reduction grows as the static prefix becomes longer. With a 3072-token prefix, TTFT decreases from 381.76 ms to 77.47 ms, a 79.7% reduction.</p>
+    <p>The <code>prefix_changed</code> negative control produces 0.0% cache hit in all experiments and returns TTFT close to the no-cache condition. This confirms that the measured improvement comes from exact-prefix reuse rather than measurement noise. End-to-end throughput, however, does not improve consistently under warm cache. In this 64-token generation benchmark, decode dominates total runtime. The correct interpretation is therefore prefill-work and TTFT reduction for fixed-context workloads, not universal throughput speedup.</p>
+
+    <h3>Allocator Thrashing Negative Result</h3>
+    <p>Dynamic shape padding was intended to reduce JIT shape variation, but it caused padded tensor allocation and copy operations at every decode step, increasing PyTorch CUDA caching allocator and Python GC overhead. In the earlier benchmark, the no-padding eager path achieved 470.82 tok/s, while the dynamic-padding path achieved only 155.16 tok/s, a 67.04% throughput decrease.</p>
+
+    <h3>Green Contexts Result</h3>
+    <table>
+      <thead><tr><th>Metric</th><th class="num">Green OFF</th><th class="num">Green ON</th><th class="num">Delta</th></tr></thead>
+      <tbody>
+        <tr><td>TTFT</td><td class="num">254.10 ms</td><td class="num">249.97 ms</td><td class="num">-1.6%</td></tr>
+        <tr><td>Decode P50 ITL</td><td class="num">53.55 ms</td><td class="num">53.65 ms</td><td class="num">+0.2%</td></tr>
+        <tr><td>Decode P99 ITL</td><td class="num">83.41 ms</td><td class="num">83.22 ms</td><td class="num">-0.2%</td></tr>
+        <tr><td>Throughput</td><td class="num">376.48 tok/s</td><td class="num">377.46 tok/s</td><td class="num">+0.3%</td></tr>
+      </tbody>
+    </table>
+    <p>Green Contexts split the 48 SMs of the RTX 5070 into 32 SMs for prefill and 16 SMs for decode. Initial single-run results showed some improvement, but repeated averages were nearly flat. This suggests that SM partitioning alone does not improve end-to-end latency when the current Python engine loop does not sufficiently overlap prefill and decode.</p>
+  </section>
+
+  <section id="discussion">
+    <h2>6. Discussion</h2>
+    <p>Agent workloads differ from generic benchmarks because they repeatedly use long static contexts. Natural-language database agents repeatedly inject schemas and rules. Educational agents repeatedly inject course modules and rubrics. Placing the static prefix before the dynamic user query can therefore affect runtime efficiency, not only model quality.</p>
+    <p>micro-vLLM is not faster than production vLLM. Its practical value for a KTCP-style contribution is that it allows Windows-native execution and modification of the LLM serving loop, provides a staged learning path from MatMul to micro-vLLM, and makes successful optimizations such as prefix caching and hybrid eager dispatch, as well as failed or conditionally harmful optimizations such as dynamic shape padding and CUDA Graph replay, reproducible.</p>
+    <p>This paper deliberately excludes the ActiveGraph + Tau Coding Agent extension. That topic is better handled as a separate educational knowledge-agent or agent control-plane paper. Paper #1 mentions AI coding agents only as supporting tools for experiment design and analysis, while keeping the core contribution focused on the micro-vLLM artifact and measured systems behavior.</p>
+  </section>
+
+  <section id="limits">
+    <h2>7. Limitations</h2>
+    <ol>
+      <li>The measurements come from a single RTX 5070 target PC and should not be generalized directly to other GPUs or datacenter deployments.</li>
+      <li>The Windows-native cuTile backend is substantially slower than WSL2 FlashAttention, so the work should not be interpreted as a production performance claim.</li>
+      <li>The prefix-cache benchmark uses 64-token generation, which makes the workload decode-dominated and prevents consistent end-to-end throughput improvement.</li>
+      <li>Prefix-cache effectiveness depends on exact token-prefix stability.</li>
+      <li>Green Contexts produced mixed results in the current sequential Python engine loop.</li>
+      <li>CUDA Graph replay remains a negative systems result under the current cuTile decode kernel and graph bucket conditions, even after graph capture was repaired.</li>
+    </ol>
+  </section>
+
+  <section id="conclusion">
+    <h2>8. Conclusion</h2>
+    <p>This paper presents micro-vLLM, a Windows-native LLM inference engine artifact built with CUDA Python 1.0 and a cuTile-style workflow. Since WSL2 FlashAttention achieves 4.62x higher average throughput than the initial Windows cuTile backend, the paper frames micro-vLLM as a migration, inspection, education, and bottleneck-analysis artifact rather than a production serving replacement. However, after the cuTile KV-store repair and hybrid prefill dispatch, the eager-hybrid cuTile path reaches 557.66 tok/s, a 20.4% gain over the initial cuTile mean; CUDA Graph replay is functionally available but reduces throughput to roughly 393 tok/s under the current conditions.</p>
+    <p>The fixed-context agent workload experiment demonstrates the value of prefix KV cache. Warm cache reduces computed prefill to 64 tokens for 1024/2048/3072-token static prefixes and reduces TTFT by 41.1%, 66.1%, and 79.7%, respectively. The changed-prefix negative control shows 0.0% cache hit and near no-cache TTFT, validating the exact-prefix reuse mechanism.</p>
+  </section>
+
+  <section>
+    <h2>Artifact and References</h2>
+    <p>The implementation and key measurements are available in the <code>KernelAgent</code> artifacts. Prefix-cache raw data is stored in <code>KernelAgent/3-micro-vllm/prefix_cache_results_cutile*.jsonl</code>.</p>
+    <ol class="refs">
+      <li>W. Kwon et al., Efficient Memory Management for Large Language Model Serving with PagedAttention, SOSP 2023.</li>
+      <li>T. Dao et al., FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness, NeurIPS 2022.</li>
+      <li>P. Tillet, H. T. Kung, and D. Cox, Triton: an intermediate language and compiler for tiled neural network computations, MAPL 2019.</li>
+      <li>NVIDIA Corporation, CUDA Python Documentation.</li>
+      <li>NVIDIA Corporation, Green Contexts, CUDA Programming Guide.</li>
+      <li>GeeeekExplorer, nano-vLLM, GitHub repository.</li>
+      <li>vLLM Project, Automatic Prefix Caching, vLLM Documentation.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>This HTML file is the v5 readable review version. The submission source remains <code>paper-v5-prefix-cache.tex</code>.</p>
+  </footer>
+</main>
+</body>
+</html>
+

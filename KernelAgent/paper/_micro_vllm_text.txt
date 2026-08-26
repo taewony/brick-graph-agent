@@ -1,0 +1,524 @@
+cuTile 기반Windows-native LLM 추론엔진이식및코딩에이전트협력설계
+실증연구
+(Windows-Native LLM Inference Engine Migration via cuTile and Human-Agent
+Co-Design: An Empirical Study)
+김태원
+(Taewon Kim)
+요약
+본연구는Linux 중심LLM 서빙프레임워크의Windows 환경이식성제약을완화하기위해cuTile과CUDA Python 1.0
+기반Windows-native LLM 추론엔진micro-vllm을설계하고구현하였다. micro-vllm은flash attn 및nano-vllm의핵심
+커널을MatMul, FMHA, llm-from-scratch 단계로마이그레이션하며, 실험설계와실패insight를DSL로누적하는코딩에
+이전트협력프레임워크를함께제시한다. WSL2 FlashAttention은평균2138.55 tok/s로현재cuTile backend보다약4.62
+배높은처리량을보였으며, Green Contexts 기반Prefill/Decode SM 분할은Decode P99 ITL을평균3.9% 낮추었지만P50
+ITL과처리량은각각5.2%, 2.6% 악화되었다. 또한shape padding 기반launch/JIT 회피시도가PyTorch caching allocator
+스래싱을유발하여전체생성처리량을67.0% 저하시킬수있음을관찰하였다.
+핵심어: 거대언어모델(LLM) 서빙, cuTile, CUDA Python 1.0, 단계적커널마이그레이션, 코딩에이전트공동설계
+Abstract To alleviate the portability constraints of Linux-centric LLM serving frameworks in Windows environments, this
+study designs and implements micro-vllm, a Windows-native LLM inference engine based on cuTile and CUDA Python 1.0.
+micro-vllm migrates core kernels from flash attn and nano-vllm through sequential stages: MatMul, FMHA, and llm-from-
+scratch. Additionally, we present a human-agent co-design framework that accumulates experimental designs and failure
+insights using a Domain-Specific Language (DSL). Experimental results show that while WSL2 FlashAttention achieves an
+average throughput of 2138.55 tok/s—approximately 4.62 times higher than the current cuTile backend—the Green Contexts-
+based Prefill/Decode SM partitioning reduces the Decode P99 Inter-Token Latency (ITL) by an average of 3.9%, though it
+degrades the P50 ITL and overall throughput by 5.2% and 2.6%, respectively. Furthermore, we observe that attempts to avoid
+kernel launch and JIT compilation overhead via shape padding can trigger PyTorch caching allocator thrashing, leading to a
+67.0% reduction in total generation throughput.
+Keywords: LLM Serving, cuTile, CUDA Python 1.0, Stepwise Kernel Migration, Coding Agent Co-design
+1.
+서론
+최근생성형AI 기술의확산에따라로컬온프레미스장비나
+오프라인연구실환경에서LLM을구동하려는수요가증가하고
+있다. 특히RAG(Retrieval-Augmented Generation), 로컬지식베
+이스구축, 그리고기업정보보안을고려한로컬프라이빗추론
+환경은실제시스템설계에서중요한요구사항으로자리잡고있
+다. 그러나vLLM이나TensorRT-LLM 등실용적으로널리쓰이
+는고성능서빙아키텍처는PagedAttention 기반메모리관리[1],
+Triton 커널컴파일러[3], FlashAttention 패키지[4], 분산텐서
+통신용NCCL 라이브러리등Linux 중심구성요소에의존하는
+경우가많다. 그결과데스크톱및로컬서빙환경의보편적운영
+체제인Windows에서는WSL2(Windows Subsystem for Linux)를
+통한우회구동을선택하는경우가많으며, 이과정에서파일시
+스템경계, 드라이버/런타임구성차이, Linux 전제빌드스크립
+트는Windows native AI application 개발과디버깅의장애요인
+으로작용한다.
+본연구는이러한크로스플랫폼제약을완화한로컬LLM 서
+빙환경구축을목표로, Windows OS 기반의cuTile Python DSL
+및CUDA Python 1.0을활용한서빙엔진[2, 6] micro-vllm을
+개발하였다. 본아키텍처는진입장벽이높은C++ CUDA 대신
+Python 수준에서타일기반커널을표현할수있는cuTile을도입
+하여커널코드분석과최적화과정을비교적명시적으로관찰
+할수있도록하였으며, 이를통해추론성능과시스템병목분
+석에집중할수있도록구성하였다. 구현은MatMul, FMHA, 초
+소형llm-from-scratch, nano-vllm 커널마이그레이션으로이어지
+는단계적확장경로를포함한다. 이러한커널마이그레이션접
+근은AI 에이전트를활용해TensorFlow 모델을JAX로이전하는
+migration workflow 연구와마찬가지로, 기존코드의구조를분
+석하고목표실행환경에맞는변환계획을수립하는문제와연
+결된다[8]. 이과정에서발생하는튜닝및하드웨어프로파일링
+의긴탐색비용을줄이기위해, AI 코딩에이전트와의협력적튜
+닝파이프라인을적용하는실험과학적엔지니어링프로세스를
+검토하였다. 이는명세기반에이전트워크플로에서repository
+context와검증hook을통해에이전트의추론을환경에고정하려
+는최근연구흐름과도맞닿아있다[9].
+
+
+본논문은개별커널을빠르게만드는최적화가전체LLM 서
+빙루프에서는항상성능향상으로이어지지않는다는점을구
+체적인사례로분석한다. 예를들어kernel launch나JIT compile
+반복을줄이기위해입력shape을고정하거나padding을추가하
+면, 컴파일비용은줄어들수있지만매decode step마다임시텐
+서할당과KV cache 갱신비용이증가할수있다. 본연구는이
+러한비용이PyTorch CUDA caching allocator와호스트-디바이
+스동기화병목으로이어지는과정을분석하였다. 또한Prefill과
+Decode가같은GPU 자원을경쟁적으로사용할때발생하는간
+섭을줄이기위해CUDA Green Contexts 기반SM 분할[5]을적
+용하고, 그에따른디코딩지연시간과처리량변화를반복측정
+및분석하였다. 추가로WSL2 환경에서FlashAttention backend
+를구동하여, Windows native cuTile 경로와성숙한Linux 기반
+attention stack 사이의성능차이를기준선으로확인하였다.
+1.1
+본연구의주요기여
+본논문이제시하는학술적및시스템적주요기여점은성능
+우위주장보다재현가능한구현산출물, 실험절차, 그리고병목
+분석에초점을맞추어다음과같이정리된다.
+• [Education & Kernel Migration] 단계적커널마이그레이
+션기반LLM 추론엔진학습자료: flash attn 라이브러리
+및Linux 기반nano-vllm의핵심커널을cuTile 및CUDA
+Python 1.0 기반으로마이그레이션하여, 보편적운영체제인
+Windows 환경에서동작하는micro-vllm을설계하고실증
+적으로구현했다. LLM inference engine 최적화에처음입
+문하는연구자와학습자가시스템구조를단계적으로이해
+할수있도록, micro-vllm은MatMul, FMHA, 그리고초소형
+llm-from-scratch를순차적으로구현하고각단계에서cuTile
+과PyTorch의성능을비교하는형태로구성하였다. 이를통
+해파이썬생태계안에서GPU 커널, 어텐션, KV 캐시, 서빙
+루프가연결되는과정을재현가능한학습경로로제시하였
+다.
+• [AI4Sys] 지식-주도형코딩에이전트협력프레임워크
+(Human-AI Co-design Framework): 본연구는커널최적
+화과정을단발성코드생성이아니라DSL 기반의통제된과
+학실험루프로구조화하였다. MatMul, FMHA, LLM-from-
+scratch, micro-vllm 단계에서각실험의가설, 튜닝파라미
+터, 하드웨어제약, acceptance criteria, 실행결과, 실패원인,
+후속insight를DSL 형식으로누적하여다음실험설계에재
+사용하였다. 특히TechLead 에이전트는실험을직접실행
+하지않고실험설계, 코드패치, 로그분석, 결과해석만담
+당하도록제한하였다. 이실행권한의분리는TechLead가
+로컬디버깅의우발적세부사항에매몰되지않고, 주어진시
+스템에대한멘탈모델을유지하면서아키텍처불변성, 물리
+제약, 성능인과관계를일관되게추론하도록강제하는역할
+을했다.
+• [System & Methodology] 단일GPU 내Prefill/Decode 자
+원격리구현및평가(Single-GPU Prefill/Decode Isolation
+with Green Contexts): vLLM 계열LLM serving에서는대
+량토큰을한번에처리하는Prefill 단계와1토큰단위로반
+복되는Decode 단계의병목특성이다르기때문에, 두단계
+의자원간섭을줄이는분리실행구조가중요하다. 본연구
+는CUDA Python 1.0의Green Contexts API를이용하여단
+일RTX 5070 GPU 안에서SM 자원을Prefill 32 SM, Decode
+16 SM으로물리적으로나누는방식을micro-vllm에적용
+하였다. 이를통해별도GPU나분산런타임없이하나의
+소비자용GPU 내부에서Prefill과Decode의실행영역을분
+리하고, Decode 작업의L2 cache residency를보호하는설계
+를검토하였다. 총8회반복실행에서는Decode P99 ITL이
+평균3.9% 감소했지만, P50 ITL과전체Throughput은각각
+5.2%, 2.6% 악화되었다. 따라서본연구는Green Contexts
+를확정적인성능향상기법으로단정하지않고, 단일GPU
+내부에서Prefill/Decode 자원격리를구현하고tail latency와
+throughput 사이의trade-off를검토하기위한실험적기반으
+로제시한다.
+• [Engineering Analysis] CUDA Graph/JIT 회피최적화의
+역효과분석(Allocator Thrashing under Shape Stabiliza-
+tion): LLM serving에서빈번한kernel launch와JIT compile
+반복을줄이기위해CUDA Graph 적용이나shape padding을
+통한형상안정화가흔히고려된다. 그러나본구현범위의
+Eager-mode micro-vllm에서는이러한접근이예상과달리
+성능을저하시킬수있음을관찰하였다. 특히동적배치와
+Paged KV cache가결합된상황에서padding은커널컴파일
+횟수를줄이는대신, 매decode step마다대형임시텐서할
+당과복사를유발하였다. 그결과PyTorch caching allocator
+의free-list 탐색, cudaMalloc/cudaFree fallback, Python GC
+및암묵적동기화비용이누적되어GPU kernel launch 또는
+JIT compile 비용보다큰호스트-디바이스병목으로전환되
+었다. 실험에서는padded 경로가no-padding Eager 경로대
+비전체Throughput을67.0% 낮추는것으로관찰되었으며,
+이를통해LLM inference engine에서는launch/JIT 회피전
+략도메모리할당패턴과KV cache 갱신방식까지함께고
+려해평가해야함을보였다.
+
+
+2.
+관련연구및배경
+2.1
+LLM 서빙엔진과PagedAttention
+LLM 서빙엔진은사용자의입력프롬프트를한번에처리하는
+Prefill 단계와, 이후토큰을하나씩생성하는Decode 단계를반복
+적으로수행한다. Decode 단계에서는매스텝마다과거토큰의
+Key/Value 정보를재사용하므로, KV cache의배치, 갱신, 재사
+용방식이지연시간과처리량에직접적인영향을준다. vLLM은
+KV cache를고정크기의물리블록으로나누어관리하는Page-
+dAttention을통해메모리단편화와동적배치문제를완화하였
+다[1]. 이구조는대규모multi-user serving에서효과적이지만,
+실제구현은Triton [3], FlashAttention [4], NCCL 등Linux 중심
+GPU 소프트웨어스택과밀접하게결합된경우가많다. 따라서
+Windows 기반로컬장비나교육용단일GPU 환경에서는서빙
+구조를학습하거나커널수준에서수정· 분석하기어렵다는제
+약이남는다. 본연구의micro-vllm은이러한제약을줄이기위
+해Paged KV cache와Prefill/Decode 실행흐름을Windows native
+환경에서재구성하는것을목표로한다.
+2.2
+CUDA Python 1.0 및cuTile DSL
+CUDA Python 1.0은Python에서CUDA driver/runtime API를
+직접호출할수있는바인딩계층을제공하며, Python 기반실험
+코드와저수준GPU 제어를연결하는기반이된다. cuTile DSL
+은행렬곱셈이나어텐션연산을타일단위로표현하여, shared
+memory, register blocking, Tensor Core MMA와같은커널설계
+요소를Python 코드수준에서다룰수있도록한다[2, 6]. 이는
+C++ CUDA보다진입장벽이낮고, PyTorch의고수준연산보다
+하드웨어동작을명시적으로관찰하기쉽다는장점이있다.
+본연구에서는cuTile을단순한커널작성도구가아니라단
+계적학습및마이그레이션도구로사용한다. 먼저MatMul에서
+타일링과메모리계층을학습하고, FMHA에서online softmax와
+causal masking을구현한뒤, llm-from-scratch 단계에서KV cache
+와CUDA Graph를결합한다. 마지막으로nano-vllm의핵심커널
+을micro-vllm으로마이그레이션하여Paged KV cache와contin-
+uous batching 상황을다룬다. 이단계적구성은LLM inference
+engine 최적화의핵심요소를Python 생태계안에서재현하고비
+교할수있게한다. 기존의AI 기반migration workflow 연구가
+정적분석, migration plan, orchestrator/coder 협업, 품질평가를
+결합해대규모모델이전을지원한것처럼[8], 본연구는LLM
+serving 커널을cuTile/CUDA Python 기반으로재구성하면서각
+단계의설계선택과성능결과를함께기록한다.
+2.3
+시스템최적화파트너로서의코딩에이전트
+최근코딩에이전트는코드생성, 테스트수정, 자동디버깅을
+넘어시스템최적화과정에도활용되고있으며, GPU 커널성능
+최적화에특화된멀티에이전트시스템으로Astra [7]가제안되
+었다. 그러나GPU 커널최적화에서는단순히코드를생성하거
+나파라미터를탐색하는것만으로충분하지않다. 레지스터스
+필링, shared memory 사용량, L2 cache locality, kernel launch 비
+용, PyTorch allocator 동작, KV cache 갱신방식처럼서로다른
+계층의원인이하나의성능결과로합쳐지기때문이다. 따라서
+에이전트가유효한도움을주기위해서는현재시스템의구조와
+실험이력을일관된멘탈모델로유지해야한다.
+본연구에서는코딩에이전트를자율실행주체가아니라
+TechLead 역할의실험설계자와분석자로제한하였다. Tech-
+Lead는직접실험을실행하지않고, DSL에기록된하드웨어제
+약, 튜닝파라미터, 이전실험결과를바탕으로패치와측정계
+획을제안한다. 실제실행은Executor가담당하고, 실행로그와
+측정결과는다시DSL 지식으로누적된다. 이러한역할분리
+는에이전트가로컬디버깅의우발적세부사항에끌려가지않
+고, 시스템수준의인과관계와아키텍처제약을중심으로판단
+하도록만드는장치로작동한다. 이는Spec Kit Agents가단계별
+context-grounding hook과validation hook을통해에이전트산출
+물을repository evidence에연결하려는접근[9]과유사하게, 실
+험DSL을통해TechLead의판단근거를명시적으로고정한다는
+점에서관련된다.
+3.
+공동설계방법론
+3.1
+프레임워크개요
+단일GPU의제한된하드웨어자원하에서LLM 추론엔진커
+널을마이그레이션하려면, 고수준아키텍처모델과저수준물리
+연산사이의제약을함께관리해야한다. 본연구는이과정을
+통제된과학실험(Controlled Scientific Experiment)으로모델링
+하고, 실험결과를DSL 지식으로누적하여다음패치와튜닝제
+약을갱신하는인지컴파일러(Cognitive Compiler) 방법론으로
+정리한다.
+3.2
+3계층위계구조
+본프레임워크는정보의추상화수준과실행권한에따라
+Architect(상위), TechLead(중위), Executor(하위)의3계층으로
+역할을분리한다.
+• Architect: 시스템궁극의도(Intent) 정의, 전역제약수립,
+지식최종승인을담당한다. 거시적구조설계와핵심기술
+스택선정에관여하고, 이후기술적상세수준의전개에는
+직접개입하지않는다.
+• TechLead-Agent: 설계문서, DSL 문서, 실험로그, 실패원
+인, 후속제약을연결하여시스템지식을누적하고정합성을
+
+
+유지하는중심계층이다. Architect가정의한전역의도와제
+약을구체적인패치후보, 튜닝탐색범위, acceptance criteria
+로변환하고, Executor가반환한측정결과를다시DSL 지식
+으로구조화한다.
+• Executor: 패치를물리적으로로드하여GPU 상에서JIT 컴
+파일및론칭, 실행에러에대한로컬자율디버깅수행, 프
+로파일텔레메트리계측을수행한다. 전역적아키텍처설계
+에는관여하지않고정량데이터수집에집중한다.
+3.3
+DSL 기반실험지식명세
+본
+연구의
+DSL은
+단순한
+설정
+파일이
+아니라
+실
+험
+설계,
+실행
+결과,
+실패
+원인,
+후속
+제약을
+누적하
+는
+실험
+지식의
+저장
+단위로
+사용되었다.
+각
+단계의
+DSL
+문서는
+공통적으로
+metadata,
+design space,
+tuning space,
+hardware constraints,
+knowledge rules,
+milestones,
+agent eval loop,
+acceptance criteria 필드를가진다.
+이구조를통해
+TechLead는이전실험의결과를명시적인규칙과측정기준으로
+다시읽고, 다음패치와실험조건을설계할수있었다.
+DSL 필드
+기록내용
+역할
+design space
+Prefill/Decode, KV cache, execu-
+tion mode
+구조선택지정의
+tuning space
+tile size, SM allocation, block
+size
+튜닝파라미터정의
+knowledge rules
+성공/실패에서도출된조건과후
+속action
+insight 재사용
+acceptance criteria
+throughput, TTFT, ITL, VRAM
+등
+결과판정기준
+대표적으로dynamic shape padding은JIT compile 반복
+을줄이기위한시도였지만, Eager-mode serving에서매de-
+code step마다대형임시tensor 할당과복사를유발하여Py-
+Torch caching allocator와Python GC 비용을크게증가시
+켰다. 이결과는Allocator Thrashing Prevention 및
+Caching Allocator Thrashing Prevention 규칙으로
+기록되었고, 후속micro-vllm 실험에서는no-padding Eager serv-
+ing을기본제약으로사용하였다.
+4.
+micro-vllm 아키텍처및핵심최적화
+4.1
+Windows-native 서빙구성
+vLLM과같은프로덕션서빙프레임워크는대규모모델의분
+산연산을위해Linux 계열에서만작동하는NCCL 백엔드를기
+본적으로사용한다. Windows 네이티브환경에서분산텐서연산
+의컴파일호환성을검토하기위해, 우리는PyTorch Distributed
+의Gloo 백엔드를다중디바이스분산스택에이식하였다. 이
+를통해분산통신계층의대대적인코드수정이나이진컴파일
+(Binary compilation) 충돌없이, 텐서병렬선형레이어의논리
+구조를Windows 네이티브실행환경으로비교적적은수정으로
+마이그레이션할수있음을확인하였다.
+4.2
+벡터화된논리-물리블록캐시재구성
+실제서비스루프내에서prefix-cached prefill 연산을수행할
+때, 새롭게인가된Key, Value 텐서모양과메모리풀내부의논리
+적시퀀스크기간의불일치로인한런타임셰이프오류가빈번
+히유발된다. 우리는이셰이프매칭을CPU 연산루프를사용하
+지않고GPU 상에서병렬적으로처리하기위해, 벡터화된논리-
+물리캐시재구성레이어를적용하였다. context 길이seqlen k에
+해당하는메모리오프셋주소를텐서인덱스연산으로변환하여
+물리주소로매핑하며, dynamic continuous batching 상황에서의
+형상불일치문제를본실험범위에서완화하였다.
+4.3
+FMHA 및호스트-디바이스병목분석
+FMHA(Fused Multi-Head Attention) 커널설계시, 메모리계층
+간의IO 비용을축소하기위해attention score를공유메모리및
+레지스터영역에상주시켰다. online softmax 알고리즘을타일
+레벨에주입하여수치안정성을취하고, causal masking을cuTile
+스레드-블록연산에통합하였다.
+반면JIT 컴파일을줄이기위한dynamic padding은예상과달
+리성능을저하시켰다. padding을위해매decode step마다대형
+패딩텐서를새로할당하면, PyTorch의CUDA caching allocator
+가내부free-list 탐색과cudaMalloc/cudaFree fallback, Python GC
+비용을반복적으로유발한다. 본구현범위에서는no-padding
+Eager serving이더나은선택이었다.
+4.4
+CUDA Green Context 기반자원격리
+우리는CUDA Python 1.0의하드웨어분할API인Green Con-
+texts를적용하여RTX 5070 GPU의전체48개SM 자원을Prefill
+32 SM, Decode 16 SM으로분할하였다. 이러한물리적SM 구획
+화는Prefill과Decode의실행영역을분리하고Decode 작업의L2
+cache residency를보호할가능성이있다. 다만현재구현은Pre-
+fill과Decode를서로다른CPU thread와GPU stream에서overlap
+시키지못하므로, 안정적인E2E 성능개선은추가검증대상으로
+남는다.
+5.
+실험및평가
+5.1
+실험환경
+Windows 11 OS 환경에서NVIDIA GeForce RTX 5070
+GPU(48 SM, 12GB VRAM, CUDA 13.3) 및Qwen2.5-3B-Instruct
+모델을사용해평가를실시하였다. 동시사용자수는256명으로
+고정하고, 입력및출력의크기를100에서1024 토큰범위내에서
+동적으로조율하는continuous batching 상황을재현하였다.
+
+
+5.2
+WSL FlashAttention 기준선과cuTile 비교
+동일하게133,966개생성토큰을처리하는dynamic multi-user
+benchmark에서
+Windows
+native
+cuTile
+backend와
+WSL2
+FlashAttention
+backend를
+비교하였다.
+FlashAttention은
+Linux/WSL2 환경에서Triton 및optimized attention kernel
+을활용하는성숙한기준선으로사용하였으며, cuTile backend
+는Windows native kernel migration 경로의현재구현성능을
+확인하는대상으로사용하였다.
+Backend
+Runs
+Time
+Throughput
+Rel.
+Win. cuTile
+3
+289.16s
+463.35 tok/s
+1.00x
+WSL2 FlashAttn 4
+62.65s
+2138.55 tok/s
+4.62x
+반복측정결과FlashAttention 기준선은평균2138.55 tok/s를
+기록하여현재cuTile backend 평균463.35 tok/s 대비약4.62배
+높은처리량을보였다. 따라서본연구의Windows native cuTile
+구현은production-grade Linux attention kernel을능가한다는주
+장이아니라, Windows 환경에서LLM serving kernel을단계적으
+로마이그레이션하고병목을분석할수있는구현및학습경로
+로해석해야한다.
+5.3
+Allocator thrashing 및Green Contexts 결과
+dynamic padding 설정은Eager 설정에비해전체시스템
+Throughput이67.0% 하락하는병목을유발하는것으로관찰되
+었다. 이는launch/JIT 회피전략도메모리할당패턴과KV cache
+갱신방식까지함께고려해평가해야함을보여준다.
+Green Contexts 반복측정에서는초기단일실행에서Decode
+P50 ITL과throughput 개선이관찰되었지만, 추가반복실행을
+포함한총8회측정에서는일관된throughput 개선으로재현되지
+않았다.
+Metric
+Green OFF
+Green ON
+Delta
+TTFT
+251.79 ms
+250.30 ms
+-0.6%
+Decode P50 ITL
+49.76 ms
+52.33 ms
++5.2%
+Decode P99 ITL
+91.14 ms
+87.60 ms
+-3.9%
+Throughput
+397.07 tok/s
+386.92 tok/s
+-2.6%
+8회반복결과는Green Contexts 기반SM 분할이단일GPU
+내부에서Prefill과Decode의실행영역을물리적으로나누는데
+에는유효하지만, 현재의순차적Python engine loop에서는안정
+적인처리량개선으로직접이어지지않는다는점을보여준다.
+다만Decode P99 ITL은평균3.9% 감소하여tail latency 완화가
+능성이관찰되었다.
+6.
+결론및향후연구
+본논문은Windows OS 환경에서cuTile DSL과CUDA Python
+1.0을결합한cuTile 기반LLM 추론엔진인micro-vllm을구현하
+고E2E 수준의병목요인을관찰하였다. WSL2 FlashAttention 기
+준선은현재Windows native cuTile backend보다평균4.62배높
+은처리량을보였으므로, micro-vllm의현재기여는production-
+grade kernel 대비성능우위가아니라Windows native migration,
+교육가능한실험경로, 그리고병목분석프레임워크에있다.
+Green Contexts 기반SM 파티셔닝은총8회반복실행에서De-
+code P99 ITL을평균3.9% 낮추었지만, P50 ITL과throughput은
+각각5.2%, 2.6% 악화되었다. 따라서본논문은이를단일GPU
+내Prefill/Decode 자원격리의구현가능성과tail-latency trade-
+off에대한초기실증으로해석하며, 안정적인성능개선주장은
+추가검증대상으로남긴다.
+향후연구로는엔진루프를비동기멀티스레드구조로확장하
+여, 서로다른GPU stream과Green Contexts 기반SM 파티션에서
+Prefill과Decode가동시에진행되도록할계획이다. 또한반복되
+는system prompt나RAG prefix에대해Prefix KV cache reuse를
+적용하여Prefill 연산을줄이고, 더긴context와높은동시성을
+지원하기위한선택적KV cache offloading 기법을후속적으로
+검토한다.
+자료공개
+본
+논문에
+사용된
+구현
+코드와
+주요
+측정
+결과
+는
+다음
+공개
+저장소에서
+확인할
+수
+있다:
+https:
+//github.com/taewony/metaprogramming/tree/
+main/KernelAgent.
+감사의글
+본연구의코드최적화및실험설계과정에서AI 코딩에이전
+트를보조도구로활용하였으며, 모든최종결정과검증은인간
+저자가수행하였다.
+참고문헌
+[1] W. Kwon, Z. Li, S. Zhuang, et al., “Efficient Memory Man-
+agement for Large Language Model Serving with PagedAtten-
+tion,” Proceedings of the 29th Symposium on Operating Sys-
+tems Principles (SOSP), 2023.
+[2] NVIDIA Corporation, “NVIDIA CUDA 13.3 Enhances GPU
+Development with Tile Programming in C++ Compiler, Auto-
+tuning, and Python Updates,” NVIDIA Developer Blog, 2026.
+[3] P. Tillet, H. T. Kung, and D. Cox, “Triton: an intermediate
+language and compiler for tiled neural network computations,”
+Proceedings of MAPL, 2019.
+
+
+[4] T. Dao, D. Y. Fu, S. Ermon, et al., “FlashAttention: Fast
+and Memory-Efficient Exact Attention with IO-Awareness,”
+NeurIPS, 2022.
+[5] PyTorch Foundation, “torch.cuda.green contexts: Granular
+Resource Partitioning for CUDA Kernels,” PyTorch Beta Doc-
+umentation, 2025.
+[6] NVIDIA Corporation, “cuTile Python API Reference Guide,”
+NVIDIA CUDA Documentation, 2026.
+[7] A. Wei, T. Sun, Y. Seenichamy, H. Song, A. Ouyang, A.
+Mirhoseini, K. Wang, and A. Aiken, “Astra: A Multi-Agent
+System for GPU Kernel Performance Optimization,” arXiv
+preprint arXiv:2509.07506, 2025.
+[8] S. Nikolov, B. Konrad, M. Gronbach, N. Kumar, A. Yan, V.
+Singh, Y. Liang, and P. Ranganathan, “A Multi-agent AI Sys-
+tem for Deep Learning Model Migration from TensorFlow to
+JAX,” arXiv:2603.27296, 2026.
+[9] P. Taghavi and S. Bhavani, “Spec Kit Agents: Context-
+Grounded Agentic Workflows,” arXiv:2604.05278, 2026.

@@ -1,0 +1,215 @@
+• 초록 나머지 부분을 현재 기여 순서에 맞춰 정리했습니다.
+  1. Windows 기반 로컬 연구/교육 환경에서의 LLM inference engine 학습·실험 문제
+  2. flash_attn/nano-vllm에서 micro-vllm으로 이어지는 단계적 kernel migration
+  3. DSL 기반 실험 설계와 insight 누적, TechLead 실행 권한 분리에 의한 contextual mental model 유지
+  4. 단일 GPU 내 Prefill/Decode 자원 격리와 Green Contexts 성능 결과
+  5. CUDA Graph/JIT 회피 최적화가 allocator thrashing으로 역효과를 낼 수 있다는 engineering 분석
+
+  검색 기준으로 과장 표현도 다시 확인했고, 본문에는 이전의 “완벽”, “입증”, “독창”, “100%” 같은 강한 표현은 남아 있지 않
+  습니다.
+
+  추가 개선 필요
+  1. 참고문헌이 사실상 없습니다. vLLM/PagedAttention, FlashAttention, CUDA Python/cuTile, CUDA Graph, Green Contexts,
+     PyTorch allocator, coding agent/AI4Sys 관련 인용을 반드시 넣어야 합니다.
+  3. DSL/프레임워크 기여는 구체 산출물을 보여줘야 합니다. 예: DSL 필드 구조, 한 실험이 DSL에 기록되는 예시, 실패 insight
+     가 다음 실험 제약으로 재사용된 사례.
+
+  2. 실험 표가 현재 결론을 받치기엔 부족합니다. 특히 MatMul -> FMHA -> LLM-from-scratch -> micro-vllm 단계별 성능 비교
+     표가 있어야 첫 번째 기여가 설득됩니다.
+  4. Green Contexts 결과는 단일 실험처럼 보입니다. 최소 반복 횟수, 평균/표준편차, 워크로드 설명, Green OFF/ON 조건, 측정
+     방법을 명시해야 합니다.
+  5. CUDA Graph/JIT 회피 역효과는 allocator thrashing의 직접 근거가 필요합니다. allocation count, peak memory, CPU time,
+     cudaMalloc/cudaFree 발생 여부, GC 시간 등 보조 지표가 있으면 훨씬 강해집니다.
+
+  KTCP 채택 가능성 판단
+  현재 상태는 “아이디어와 실험 소재는 KTCP에 잘 맞지만, 원고 완성도는 아직 투고 직전 수준은 아님”입니다. KIISE는 KIISE
+  Transactions on Computing Practices를 월간 발행하는 것으로 확인되며, 이름 그대로 실제 구현·시스템·평가 성격의 논문과
+  궁합은 있습니다. 출처: KIISE overview
+  (https://en.wikipedia.org/wiki/Korean_Institute_of_Information_Scientists_and_Engineers)
+
+  제 판단:
+  - 지금 그대로 제출: 채택 가능성 낮음에서 중간 이하
+  - 참고문헌, 단계별 실험표, DSL 예시, Green Contexts 반복 실험, allocator 근거를 보강: KTCP 성격에는 꽤 맞는 실용 시스
+    템 논문으로 올라갈 가능성 있음
+  가장 먼저 할 일은 “기여 1개당 표/그림 1개”를 맞추는 것입니다. 현재 기여는 좋아졌고, 이제 증거 배치가 필요합니다.
+
+  작업 계획
+
+  1. 실험 주장을 재정의합니다.
+
+  직접 비교 불가능:
+
+  - WSL flash_attn 설치 실패
+  - nano-vllm(triton kernel) on WSL 성능 미측정
+  - 현재 Host PC에 RTX 5070 없음
+
+  논문에서 가능한 주장:
+
+  - Windows에서 cuTile 기반 kernel migration 경로를 구현했다.
+  - MatMul, FMHA, llm-from-scratch는 Windows에서 PyTorch 대비 성능 비교 가능하다.
+  - micro-vllm은 기존 test-result.md 결과를 기반으로 Eager cuTile serving, padding ablation, Green Contexts ablation을
+    분석할 수 있다.
+
+  - nano-vllm과의 직접 성능 우위가 아니라 Linux 의존 커널을 Windows-native cuTile 경로로 migration한 구현/분석 기여로 표
+    현한다.
+
+  2. Windows에서 다시 실행할 벤치마크를 확정합니다.
+
+  우선순위:
+
+  - MatMul: cuTile vs PyTorch, 크기별 TFLOPS 표
+  - FMHA: cuTile vs PyTorch SDPA, sequence length별 latency/TFLOPS 표
+  - llm-from-scratch: PyTorch attention vs cuTile attention, CUDA Graph 적용 전후, TTFT/decode throughput
+  - micro-vllm: 기존 test-result.md 기반 정리 + 가능하면 동일 환경에서 재실행
+
+  각 실험은 같은 양식으로 맞춥니다:
+
+  - Hardware
+  - Software stack
+  - Workload
+  - Baseline
+  - cuTile variant
+  - Metric
+  - Repetition/warmup
+  - Result
+  - Insight stored in DSL
+
+  3. test-result.md를 micro-vllm 실험 표로 변환합니다.
+
+  현재 쓸 수 있는 결과:
+
+  - Eager cuTile serving: 133,966 tokens, 284.54s, 470.82 tok/s
+  - Padded cuTile: 155.16 tok/s, -67.0%
+  - Green Contexts OFF/ON:
+      - TTFT: 244.60ms -> 243.42ms
+      - Decode P50 ITL: 48.63ms -> 41.83ms, -14.0%
+      - Decode P99 ITL: 85.31ms -> 84.34ms
+      - Throughput: 415.50 -> 459.73 tok/s, +10.6%
+
+  이걸 실험 및 평가에 두 개 표로 넣습니다:
+
+  - Eager vs Padded
+  - Green Contexts OFF vs ON
+
+  4. micro-vllm 아키텍처 및 핵심 최적화 섹션을 바꿉니다.
+
+  현재는 설명이 추상적입니다. 다음 구조로 재작성하는 게 좋습니다.
+
+  - Windows-native migration boundary
+      - flash_attn/Triton/NCCL 의존 경로를 Windows에서 직접 쓰기 어려웠음
+      - Gloo fallback, cuTile attention, eager routing으로 대체
+
+  - Paged KV cache and vectorized block mapping
+      - prefix/paged cache shape mismatch
+      - CPU loop 대신 tensor indexing 기반 logical-to-physical mapping
+
+  - cuTile attention kernel path
+      - MatMul → FMHA → llm-from-scratch → micro-vllm로 이어지는 migration
+      - 여기서 micro-vllm의 cuTile kernel이 어떤 위치를 차지하는지 설명
+
+  - Serving-loop constraints
+      - CUDA Graph는 모든 상황에서 이득이 아님
+      - dynamic batching + KV cache + padding이 allocator thrashing을 만들 수 있음
+
+  5. 실험 및 평가 섹션을 증거 중심으로 재구성합니다.
+
+  추천 구조:
+
+  - 실험 환경
+  - 단계별 kernel migration 성능 평가
+      - MatMul 표
+      - FMHA 표
+      - llm-from-scratch 표
+
+  - micro-vllm E2E serving 평가
+      - Eager throughput
+      - output sanity check
+
+  - Engineering ablation: shape padding
+      - Eager vs Padded
+
+  - Single-GPU resource isolation: Green Contexts
+      - OFF vs ON
+
+  - 논의: 직접 비교하지 못한 항목
+      - WSL flash_attn 설치 실패로 nano-vllm/Triton 직접 비교는 본 논문 범위에서 제외
+      - 대신 Windows-native cuTile 구현과 내부 ablation 중심으로 평가
+
+  이 “제외” 문장은 꼭 들어가는 편이 좋습니다. 심사자가 “왜 vLLM/nano-vllm과 비교가 없나?”라고 물을 가능성이 큽니다.
+
+  6. 논문 문장 톤을 조정합니다.
+
+  피해야 할 주장:
+
+  - vLLM보다 빠르다
+  - FlashAttention을 대체한다
+  - Windows에서 고성능을 보장한다
+  - Linux 의존성을 완전히 제거했다
+
+  쓸 수 있는 주장:
+
+  - 본 구현 범위에서 관찰하였다
+  - Windows-native cuTile migration 경로를 제시하였다
+  - PyTorch baseline 및 내부 ablation을 통해 병목을 분석하였다
+  - nano-vllm/Triton 직접 비교는 환경 제약으로 수행하지 못했으며 후속 연구로 둔다
+
+  7. 다음 실제 작업 순서
+
+  제가 권하는 순서입니다.
+
+  1. test-result.md에서 micro-vllm 결과 표를 paper.html에 반영
+  2. MatMul 벤치마크 재실행
+  3. FMHA 벤치마크 재실행
+  4. llm-from-scratch 벤치마크 재실행
+  5. 세 결과를 실험 및 평가의 “단계별 kernel migration” 표로 추가
+  6. micro-vllm 아키텍처 및 핵심 최적화를 결과와 맞게 재작성
+  7. 실험 및 평가 마지막에 “비교 한계 및 후속 평가” 소절 추가
+  8. paper.html에서 paper.tex로 변환 또는 LaTeX 수동 동기화
+
+  최종 판단
+  우선 target PC에서 확인할 1차 목표는 “성능 비교”가 아니라 비교군이 성립하는지입니다. 즉, WSL에서 flash_attn이 설치되
+  고, nano-vllm이 Triton/FlashAttention 경로로 실제 실행되는지만 먼저 확인하면 됩니다.
+
+  권장 체크 순서:
+
+  python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.get_device_name(0))"
+
+  python -c "import flash_attn; print(flash_attn.__version__)"
+
+  python -c "import triton; print(triton.__version__)"
+
+  가능하면 설치 후에는 import만 보지 말고 작은 attention smoke test까지 확인하세요. import는 되는데 runtime kernel
+  compile에서 깨지는 경우가 있습니다.
+
+  성능 비교 방향은 이렇게 잡는 게 안전합니다.
+
+  - flash_attn/nano-vllm on WSL이 더 빠르면:
+      - 논문에는 “Windows-native cuTile이 Linux 최적화 스택보다 빠르다”가 아니라,
+      - “성능 최상위 Linux 스택과의 gap을 확인했고, Windows-native 교육/실험/이식 가능성을 확보했다”로 해석합니다.
+
+  - micro-vllm/cutile on Windows가 특정 조건에서 비슷하거나 이기면:
+      - 그 조건을 매우 좁게 써야 합니다. 예: small batch, specific decode-heavy workload, Green Contexts enabled 등.
+
+  Executor인 당신이 target PC에서 실행하고, TechLead인 저는 실행 로그를 받아서:
+
+  1. 비교 실험 설계 검토
+  2. 결과 표 정리
+  3. 원인 분석
+  4. paper.html 반영
+     을 맡는 구조로 가면 됩니다.
+
+  flash_attn 설치 확인 후 저에게 아래만 보내주세요.
+
+  OS/WSL version:
+  GPU:
+  nvidia-smi:
+  Python:
+  PyTorch:
+  CUDA:
+  Triton:
+  flash_attn:
+  install command:
+  error log or success log:
+
+  설치가 실패하면 그 실패도 논문에는 “비교 한계”가 아니라 “Windows-native path 필요성”의 배경 근거로 일부 활용할 수 있습
+  니다.

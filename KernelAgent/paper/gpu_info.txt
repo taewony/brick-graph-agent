@@ -1,0 +1,35 @@
+PS D:\Capstone\metaprogramming\KernelAgent\0-MatMul> nvidia-smi
+Wed Jun 17 08:50:23 2026
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 610.47                 KMD Version: 610.47        CUDA UMD Version: 13.3     |
++-----------------------------------------+------------------------+----------------------+
+
+PS D:\Capstone\metaprogramming\KernelAgent\0-MatMul> python .\gpu_info.py
+============================================================
+ GPU Architecture Analysis for MatMul Optimization
+============================================================
+Model Name           : NVIDIA GeForce RTX 5070
+Architecture         : sm_120
+Total VRAM (Global)  : 11.94 GB
+SM Count (Cores)     : 48 SMs
+
+[Memory Hierarchy - For Tiling Strategy]
+  L2 Cache Size      : 48.00 MB
+  Shared Mem / Block : 48.00 KB (Max Tile Size constraint)
+  Shared Mem / SM    : 100.00 KB (Occupancy constraint)
+
+[Register File - For Occupancy]
+  Registers / Block  : 65536 (32-bit)
+  Registers / SM     : 65536
+
+[Bus Interface]
+  Memory Bus Width   : 192-bit
+  Memory Clock Rate  : 14001 MHz
+============================================================
+
+💡 [Optimization Tips based on Specs]
+  1. Max Tile Size:
+     -> 128x128 might be too large. Consider 64x64.
+  2. Swizzling Strategy:
+     -> With 48.0 MB L2 Cache, you can cache a significant portion of Matrix B.
+     -> Large L2 allows larger GROUP_SIZE_M (e.g., 4 or 8) effectively.

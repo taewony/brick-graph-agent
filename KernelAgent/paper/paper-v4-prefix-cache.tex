@@ -1,0 +1,234 @@
+% Revised Paper #1 draft for KTCP/KIISE-style submission.
+% This file is derived from the local KCC template used by paper-v3.tex.
+
+\documentclass{kcc}
+
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{url}
+
+\title{cuTile 기반 Windows-native LLM 추론 엔진 이식과 고정 컨텍스트 Agent Workload에서의 Prefix KV Cache 실증}
+\engtitle{Windows-Native LLM Inference Engine Migration with cuTile and Prefix KV-Cache Evaluation for Fixed-Context Agent Workloads}
+\author{}
+\engauthor{
+\vspace{6mm}
+김태원\\ (Taewon Kim)\\
+}
+
+\abstract{
+본 연구는 Linux 중심 LLM 서빙 프레임워크의 Windows 환경 이식성 제약을 완화하고, LLM 추론 엔진 내부 동작을 교육 및 실험 목적으로 관찰할 수 있도록 CUDA Python 1.0 및 cuTile 기반 Windows-native 추론 엔진 \textbf{micro-vLLM}을 설계하고 구현하였다. micro-vLLM은 MatMul, FMHA, llm-from-scratch, nano-vLLM-style serving으로 이어지는 단계적 커널 마이그레이션 경로를 제공하며, Paged KV cache, prefix cache, Green Contexts, allocator thrashing 등 LLM serving loop의 주요 병목을 재현 가능한 형태로 드러낸다. 기존 실험에서 WSL2 FlashAttention backend는 평균 2138.55 tok/s를 기록하여 Windows-native cuTile backend 평균 463.35 tok/s보다 약 4.62배 높은 처리량을 보였다. 따라서 본 논문은 micro-vLLM을 production-grade Linux serving stack의 성능 대체물이 아니라, Windows-native 환경에서 LLM serving 구조를 학습하고 병목을 분석하기 위한 educational systems artifact로 위치시킨다. 추가로 본 연구는 Text-to-SQL agent, CUDA tutor, knowledge retrieval agent처럼 긴 system prompt, DB schema, \texttt{SKILL.md}, course context가 반복되는 고정 컨텍스트 agent workload를 정의하고, prefix KV cache의 효과를 실증하였다. RTX 5070 target PC에서 수행한 실험 결과, warm prefix cache는 computed prefill token 수를 모든 조건에서 64 token으로 감소시켰고, TTFT를 static prefix 1024/2048/3072 token 조건에서 각각 41.1\%, 66.1\%, 79.7\% 감소시켰다. 반면 64-token generation benchmark에서는 decode loop가 전체 실행 시간을 지배하여 E2E throughput 개선은 일관되게 나타나지 않았다. 이는 prefix cache가 주로 prefill-dominated latency, 특히 TTFT를 개선하는 최적화임을 보여준다.\\[1mm]
+\hspace*{1em}\textbf{핵심어:} LLM serving, CUDA Python 1.0, cuTile, nano-vLLM, prefix KV cache, Windows-native GPU computing, educational systems artifact\\[4mm]
+\hspace*{1em}\textbf{Abstract}
+This study presents \textbf{micro-vLLM}, a Windows-native LLM inference engine artifact implemented with CUDA Python 1.0 and a cuTile-style kernel development workflow. Instead of claiming performance superiority over mature Linux serving stacks, micro-vLLM is designed as an educational systems artifact that exposes prefill, decode, paged KV cache, prefix caching, CUDA Green Contexts, and memory-allocation bottlenecks in a reproducible Windows GPU environment. Prior measurements show that WSL2 FlashAttention achieves 2138.55 tok/s on average, approximately 4.62x faster than the current Windows-native cuTile backend at 463.35 tok/s. We further evaluate fixed-context agent workloads, where requests share long static prefixes such as system prompts, database schemas, \texttt{SKILL.md} files, or course contexts. On an RTX 5070 target PC, warm prefix KV-cache reuse reduces computed prefill tokens to 64 in all tested settings and reduces TTFT by 41.1\%, 66.1\%, and 79.7\% for 1024-, 2048-, and 3072-token static prefixes, respectively. The negative-control condition with changed prefixes yields 0.0\% cache hit and near no-cache TTFT. End-to-end throughput does not consistently improve in the 64-token generation benchmark because decode dominates total runtime. These findings show that fixed-context educational and data-query agents benefit primarily through prefill and TTFT reduction.\\[1mm]
+\hspace*{1em}\textbf{Keywords:} LLM Serving, CUDA Python 1.0, cuTile, nano-vLLM, Prefix KV Cache, Windows-native GPU Computing
+}
+
+\begin{document}
+\maketitle
+
+\section{서론}
+생성형 AI의 활용이 확대되면서 로컬 PC, 연구실 장비, 사내망, 오프라인 교육 환경에서 LLM을 직접 실행하려는 수요가 증가하고 있다. 특히 RAG, 자연어 기반 DB 질의, CUDA kernel programming tutor, local knowledge agent와 같은 응용은 고정된 지식 컨텍스트를 반복적으로 사용하면서 짧은 사용자 질의에 응답하는 형태가 많다. 이러한 환경에서는 cloud API 호출뿐 아니라 local inference engine의 latency, memory usage, KV cache behavior를 이해하는 것이 중요하다.
+
+그러나 현재 널리 사용되는 고성능 LLM serving stack은 Linux 중심 GPU software ecosystem과 강하게 결합되어 있다. vLLM, TensorRT-LLM, FlashAttention, Triton, NCCL 기반 분산 실행은 높은 성능을 제공하지만, Windows-native 환경에서 내부 구조를 수정하거나 교육 목적으로 단계별로 재구성하기 어렵다. WSL2는 실용적인 우회 경로이지만, Windows-native application 개발과 GPU runtime 학습의 관점에서는 또 다른 실행 경계를 만든다.
+
+본 연구는 성능 최고치를 목표로 하기보다, Windows-native 환경에서 LLM inference engine의 핵심 구조를 단계적으로 구현하고 관찰할 수 있는 \textbf{educational systems artifact}를 목표로 한다. micro-vLLM은 CUDA Python 1.0과 cuTile-style kernel workflow를 이용해 MatMul, FMHA, minimal autoregressive loop, paged KV cache, prefix cache, continuous batching, Green Contexts를 연결한다. 이 구조는 학습자가 GPU kernel, attention, KV cache, scheduler, decode loop, memory allocator가 전체 serving 성능에 어떻게 영향을 주는지 실험적으로 확인하도록 돕는다.
+
+본 논문의 revised contribution은 \textbf{fixed-context agent workload}와 \textbf{prefix KV cache 실증}이다. Agent 시스템은 매 요청마다 system prompt, DB schema, tool contract, \texttt{SKILL.md}, policy, course material 등 긴 정적 prefix를 반복해서 사용한다. 이러한 prompt layout은 prefix KV cache가 효과를 발휘하기 좋은 구조이다. 본 연구는 RTX 5070 target PC에서 static prefix 길이를 1024, 2048, 3072 token으로 바꾸어 no-cache, warm-cache, prefix-changed 조건을 비교하고, prefix cache가 TTFT와 computed prefill token 수를 크게 줄임을 보인다.
+
+\subsection{본 연구의 기여}
+본 논문의 기여는 다음과 같다.
+\begin{itemize}
+\item \textbf{Windows-native educational systems artifact}: micro-vLLM을 MatMul, FMHA, llm-from-scratch, nano-vLLM-style serving으로 이어지는 단계적 이식 경로로 구성하였다.
+\item \textbf{Fixed-context agent benchmark}: system prompt, DB schema, \texttt{SKILL.md}, course context가 반복되는 agent workload를 prefix cache 평가 대상으로 정의하였다.
+\item \textbf{Prefix KV cache 실증}: 1024/2048/3072-token static prefix에서 warm cache가 computed prefill token을 64 token으로 줄이고 TTFT를 41.1\%에서 79.7\%까지 감소시킴을 측정하였다.
+\item \textbf{Serving-loop bottleneck analysis}: WSL2 FlashAttention baseline, allocator thrashing, Green Contexts mixed result를 함께 제시하여 단일 kernel 최적화가 전체 serving 성능을 보장하지 않음을 보인다.
+\end{itemize}
+
+\section{배경}
+\subsection{LLM Serving Loop}
+Autoregressive LLM serving은 prompt를 한 번에 처리하는 prefill 단계와, 이후 token을 하나씩 생성하는 decode 단계로 나뉜다. Prefill은 prompt 길이와 attention 연산량에 민감하고, decode는 매 token마다 반복되는 scheduler overhead, memory bandwidth, KV cache access, kernel launch overhead에 민감하다. 따라서 동일한 engine에서도 workload가 prefill-dominated인지 decode-dominated인지에 따라 최적화 효과가 다르게 나타난다.
+
+\subsection{Paged KV Cache와 Prefix Cache}
+Paged KV cache는 Key/Value cache를 block 단위로 관리하여 동적 batching과 memory fragmentation 문제를 완화한다. Prefix cache는 여기에 token-identical prefix reuse를 추가한다. 이전 요청과 새 요청이 같은 token prefix를 공유하면, engine은 해당 prefix의 KV block을 재사용하고 새 suffix에 대해서만 prefill을 수행할 수 있다. 단, cache hit은 token-level exact match에 의존하므로 timestamp, run ID, 사용자별 metadata 같은 동적 정보가 prompt 앞부분에 들어가면 효과가 사라질 수 있다.
+
+\subsection{CUDA Python 1.0, cuTile, nano-vLLM}
+CUDA Python 1.0은 Python에서 CUDA runtime/driver API와 GPU execution control을 다룰 수 있는 기반을 제공한다. cuTile-style DSL은 tile-level GPU kernel 구현을 Python workflow 안에서 표현할 수 있게 하여, C++ CUDA보다 진입장벽을 낮추면서도 PyTorch 고수준 operator보다 hardware behavior를 명시적으로 관찰하게 한다. nano-vLLM은 vLLM-style inference engine의 구조를 작은 codebase로 학습할 수 있는 reference로 적합하며, micro-vLLM은 이 구조를 Windows-native CUDA Python 실험 경로로 이식한다.
+
+\section{시스템 설계}
+\subsection{단계적 Kernel Migration}
+micro-vLLM의 개발 경로는 네 단계로 구성된다.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|p{0.10\linewidth}|p{0.30\linewidth}|p{0.48\linewidth}|}
+\hline
+\textbf{Stage} & \textbf{Folder} & \textbf{역할} \\ \hline
+0 & \texttt{0-MatMul} & tiling, shared memory, swizzling, GEMM baseline 학습 \\ \hline
+1 & \texttt{1-FMHA} & online softmax, causal masking, fused attention 구현 \\ \hline
+2 & \texttt{2-LLM-from-scratch} & minimal autoregressive loop, KV cache, CUDA Graph 실험 \\ \hline
+3 & \texttt{3-micro-vllm} & paged KV cache, prefix cache, continuous batching, Green Contexts \\ \hline
+\end{tabular}
+\caption{micro-vLLM 단계적 마이그레이션 경로}
+\end{table}
+
+이 구조는 inference engine을 monolithic black box가 아니라 학습 가능한 단계의 연결로 만든다. 학생이나 연구자는 각 단계에서 correctness test, benchmark, failure report를 확인하고 다음 단계로 넘어갈 수 있다.
+
+\subsection{micro-vLLM Serving Architecture}
+micro-vLLM은 Qwen-family model을 대상으로 lightweight serving loop를 구성한다. Scheduler는 waiting/running sequence를 관리하고, BlockManager는 KV cache block allocation과 hash 기반 prefix reuse를 담당한다. Sequence는 prompt token, generated token, block table, cached token count를 유지한다. ModelRunner는 prefill과 decode를 구분하여 input IDs, positions, cu\_seqlens, slot mapping, block table을 구성한다.
+
+Prefix cache 경로에서는 Scheduler가 sequence allocation 시 complete block hash를 검사한다. 동일한 prefix block이 존재하면 \texttt{seq.num\_cached\_tokens}가 증가하고, ModelRunner의 \texttt{prepare\_prefill}은 cached token 이후의 suffix만 input으로 전달한다. 이때 \texttt{cu\_seqlens\_k}는 전체 context length를 유지하고 \texttt{cu\_seqlens\_q}는 새로 계산할 suffix length만 반영한다. 따라서 attention은 reused KV cache와 newly computed suffix를 함께 참조한다.
+
+\subsection{Fixed-Context Agent Workload}
+본 연구의 fixed-context workload는 다음 prompt layout을 가정한다.
+\begin{verbatim}
+[static system prompt]
+[static policy / tool contract]
+[static DB schema or course context]
+[static examples or rubric]
+[dynamic user question]
+\end{verbatim}
+Text-to-SQL agent는 DB schema와 SQL behavior rule을 반복 사용하고, CUDA tutor는 동일한 course module과 rubric을 반복 사용하며, educational knowledge agent는 OKF concept subset을 반복 사용한다. 이러한 workload에서는 첫 요청이 static prefix를 cache에 적재하면 이후 요청은 dynamic suffix만 prefill하면 된다.
+
+\section{실험 방법}
+\subsection{환경}
+실험은 Windows 11 target PC에서 NVIDIA GeForce RTX 5070 GPU를 사용하여 수행하였다. GPU는 48 SM, 약 12GB VRAM, 48MB L2 cache를 갖는 환경으로 기록되었다. micro-vLLM은 Qwen-family model을 사용하였다. 최종 제출 전 local model directory와 Hugging Face config의 정확한 이름은 artifact metadata로 고정한다.
+
+\subsection{Prefix Cache Benchmark}
+Prefix cache 실험은 \texttt{KernelAgent/3-micro-vllm/bench\_prefix\_cache.py}로 수행하였다. 각 static prefix 길이마다 세 조건을 비교했다.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|p{0.25\linewidth}|p{0.65\linewidth}|}
+\hline
+\textbf{Condition} & \textbf{설명} \\ \hline
+\texttt{no\_cache} & 매 요청 전 persistent hash table을 비워 full prefill 수행 \\ \hline
+\texttt{warm\_cache} & prime request 이후 동일 static prefix를 재사용 \\ \hline
+\texttt{prefix\_changed} & prefix 첫 token을 변경하여 exact-prefix cache hit를 방지하는 negative control \\ \hline
+\end{tabular}
+\caption{Prefix cache 실험 조건}
+\end{table}
+
+각 조건은 8개 request를 실행했고, static prefix 길이는 1024, 2048, 3072 token으로 설정하였다. Dynamic suffix는 64 token, generation length는 64 token으로 고정하였다. 측정 지표는 cache hit ratio, cached token 수, computed prefill token 수, TTFT, E2E latency, decode P50/P99 ITL, throughput이다.
+
+\section{실험 결과}
+\subsection{WSL2 FlashAttention Baseline과 Windows cuTile 비교}
+기존 dynamic multi-user benchmark는 총 133,966 generated token을 처리하였다.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|p{0.32\linewidth}|p{0.12\linewidth}|p{0.18\linewidth}|p{0.20\linewidth}|p{0.12\linewidth}|}
+\hline
+\textbf{Backend} & \textbf{Runs} & \textbf{Mean Time} & \textbf{Mean Throughput} & \textbf{Rel.} \\ \hline
+Windows cuTile & 3 & 289.16 s & 463.35 tok/s & 1.00x \\ \hline
+WSL2 FlashAttention & 4 & 62.65 s & 2138.55 tok/s & 4.62x \\ \hline
+\end{tabular}
+\caption{WSL2 FlashAttention과 Windows-native cuTile backend 비교}
+\end{table}
+
+이 결과는 Windows-native cuTile path가 성숙한 Linux attention stack보다 느리다는 점을 분명히 보여준다. 따라서 본 연구의 기여는 production throughput 우위가 아니라 Windows-native migration, inspectability, and educational experimentation이다.
+
+\subsection{Prefix KV Cache 결과}
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|r|r|r|r|r|r|r|r|r|}
+\hline
+\textbf{Static Prefix} & \textbf{Prompt} & \textbf{Hit} & \textbf{Prefill No} & \textbf{Prefill Warm} & \textbf{TTFT No} & \textbf{TTFT Warm} & \textbf{TTFT Red.} & \textbf{Changed TTFT} \\ \hline
+1024 & 1088 & 94.1\% & 1088 & 64 & 146.98 ms & 86.56 ms & 41.1\% & 148.18 ms \\ \hline
+2048 & 2112 & 97.0\% & 2112 & 64 & 255.58 ms & 86.72 ms & 66.1\% & 256.93 ms \\ \hline
+3072 & 3136 & 98.0\% & 3136 & 64 & 381.76 ms & 77.47 ms & 79.7\% & 389.61 ms \\ \hline
+\end{tabular}
+\caption{Fixed-context workload에서 prefix KV cache의 prefill 및 TTFT 효과}
+\end{table*}
+
+Warm prefix cache는 모든 static prefix 조건에서 computed prefill token 수를 64 token으로 줄였다. 이는 static prefix 전체가 complete KV block으로 재사용되고 dynamic suffix만 새로 계산되었음을 의미한다. TTFT 감소 폭은 static prefix가 길어질수록 커졌으며, 3072-token prefix에서는 381.76 ms에서 77.47 ms로 79.7\% 감소하였다.
+
+Negative control인 \texttt{prefix\_changed} 조건은 모든 실험에서 0.0\% cache hit를 보였고, TTFT가 no-cache 조건에 가깝게 회귀하였다. 이는 관찰된 개선이 measurement noise가 아니라 exact prefix reuse에 의해 발생했음을 확인한다.
+
+반면 E2E throughput은 warm-cache 조건에서 일관되게 향상되지 않았다. 64-token generation benchmark에서는 prefill 이후 decode step이 63회 반복되며 전체 runtime을 지배한다. 특히 1024-token 조건에서는 warm-cache TTFT가 줄었지만 E2E latency가 증가하였다. 따라서 본 논문은 prefix KV cache의 효과를 universal throughput speedup이 아니라 fixed-context workload의 prefill work 및 TTFT reduction으로 해석한다.
+
+\subsection{Allocator Thrashing Negative Result}
+Dynamic shape padding은 JIT shape variation을 줄이기 위한 시도였지만, 매 decode step마다 padded tensor allocation과 copy를 유발하여 PyTorch CUDA caching allocator와 Python GC 비용을 증가시켰다. 기존 benchmark에서 no-padding eager path는 470.82 tok/s를 기록한 반면, dynamic padding path는 155.16 tok/s에 머물러 throughput이 67.04\% 감소하였다. 이 결과는 launch/JIT 회피 전략도 memory allocation pattern과 KV cache update cost까지 포함해 평가해야 함을 보여준다.
+
+\subsection{Green Contexts Result}
+CUDA Green Contexts를 사용해 RTX 5070의 48 SM을 Prefill 32 SM, Decode 16 SM으로 나누는 실험도 수행하였다. 초기 single-run에서는 Decode P50 ITL과 throughput 개선이 관찰되었지만, 반복 실행 평균에서는 효과가 거의 평탄했다.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|p{0.30\linewidth}|p{0.20\linewidth}|p{0.20\linewidth}|p{0.18\linewidth}|}
+\hline
+\textbf{Metric} & \textbf{Green OFF} & \textbf{Green ON} & \textbf{Delta} \\ \hline
+TTFT & 254.10 ms & 249.97 ms & -1.6\% \\ \hline
+Decode P50 ITL & 53.55 ms & 53.65 ms & +0.2\% \\ \hline
+Decode P99 ITL & 83.41 ms & 83.22 ms & -0.2\% \\ \hline
+Throughput & 376.48 tok/s & 377.46 tok/s & +0.3\% \\ \hline
+\end{tabular}
+\caption{Green Contexts 반복 실행 평균}
+\end{table}
+
+이는 current Python engine loop가 prefill과 decode를 충분히 overlap하지 못하기 때문에, SM partitioning 자체가 E2E 개선으로 바로 이어지지 않음을 시사한다. Green Contexts는 feasibility와 future optimization path로 제시하되, 안정적 성능 향상 기법으로 과장하지 않는다.
+
+\section{논의}
+\subsection{Fixed-Context Agent Workload의 의미}
+Agent workload는 일반 benchmark와 다르게 긴 static context를 반복한다. DB 자연어 질의 agent는 schema와 rule을 반복 주입하고, 교육용 agent는 course module과 rubric을 반복 주입한다. 이러한 prompt layout에서는 static prefix를 앞쪽에 고정하고 dynamic user query를 뒤쪽에 배치하는 것만으로 serving engine의 cache reuse 가능성이 달라진다. 즉, prompt engineering은 model quality뿐 아니라 runtime efficiency에도 영향을 준다.
+
+\subsection{Educational Systems Artifact로서의 가치}
+micro-vLLM은 production vLLM보다 빠르지 않다. 그러나 KTCP 관점에서 본 연구의 실용적 가치는 Windows-native 환경에서 LLM serving loop를 직접 실행하고 수정할 수 있으며, MatMul부터 micro-vLLM까지 단계적 학습 경로를 제공하고, 성공한 최적화(prefix cache)와 실패한 최적화(shape padding)를 모두 재현할 수 있다는 점에 있다.
+
+\subsection{범위 제한}
+본 논문은 ActiveGraph + Tau Coding Agent 확장을 포함하지 않는다. 그 주제는 educational knowledge agent 또는 agent control-plane 논문으로 분리하는 것이 낫다. Paper \#1에서는 AI coding agent 협력은 실험 설계와 분석 보조 도구로 간단히 언급하고, 주요 기여는 micro-vLLM artifact와 measured systems behavior에 집중한다.
+
+\section{한계}
+본 연구에는 다음 한계가 있다. 첫째, 단일 RTX 5070 target PC 결과이므로 다른 GPU나 datacenter 환경으로 일반화하기 어렵다. 둘째, Windows-native cuTile backend는 WSL2 FlashAttention보다 크게 느리므로 production performance claim으로 해석하면 안 된다. 셋째, Prefix cache benchmark는 64-token generation으로 고정되어 decode-dominated 상황에서 E2E throughput 개선을 보이지 않았다. 넷째, Prefix cache 효과는 exact token-prefix stability에 의존한다. 다섯째, Green Contexts 결과는 current sequential Python engine loop에서는 mixed result로 나타났다.
+
+\section{결론}
+본 논문은 CUDA Python 1.0과 cuTile-style workflow를 이용해 Windows-native LLM inference engine artifact인 micro-vLLM을 구현하고, 이를 교육 가능한 systems artifact로 해석하였다. WSL2 FlashAttention은 Windows cuTile backend보다 평균 4.62배 높은 throughput을 보였으므로, micro-vLLM의 기여는 production serving 성능 우위가 아니라 Windows-native migration path, inspectable implementation, reproducible bottleneck analysis에 있다.
+
+새로 추가한 fixed-context agent workload 실험은 prefix KV cache의 실질적 가치를 보여준다. Warm cache는 static prefix 1024/2048/3072 token 조건에서 computed prefill token을 64 token으로 줄였고, TTFT를 각각 41.1\%, 66.1\%, 79.7\% 감소시켰다. Prefix가 변경된 negative control은 0.0\% cache hit와 no-cache에 가까운 TTFT를 보여 exact-prefix reuse mechanism을 검증하였다. 반면 E2E throughput은 decode-dominated benchmark에서 일관되게 개선되지 않아, prefix cache를 TTFT/prefill optimization으로 정확히 해석해야 함을 확인하였다.
+
+따라서 micro-vLLM은 Windows-native LLM serving을 성능 최고치 관점이 아니라 학습, 이식, 실험, 병목 분석의 관점에서 다룰 수 있는 artifact이며, 향후 educational knowledge agent와 local inference substrate 연구의 기반이 될 수 있다.
+
+\section*{자료 공개}
+본 논문에 사용된 구현 코드와 주요 측정 결과는 다음 저장소 및 artifact에서 확인할 수 있다: \url{https://github.com/taewony/metaprogramming/tree/main/KernelAgent}. Prefix cache raw data는 \texttt{KernelAgent/3-micro-vllm/prefix\_cache\_results\_cutile*.jsonl}에 저장되어 있다.
+
+\section*{감사의 글}
+본 연구의 코드 최적화 및 실험 설계 과정에서 AI 코딩 에이전트를 보조 도구로 활용하였으며, 모든 최종 결정과 검증은 인간 저자가 수행하였다.
+
+\begin{thebibliography}{9}
+
+\bibitem{pagedattention}
+W. Kwon, Z. Li, S. Zhuang, et al., ``Efficient Memory Management for Large Language Model Serving with PagedAttention,'' Proceedings of SOSP, 2023.
+
+\bibitem{flashattention}
+T. Dao, D. Y. Fu, S. Ermon, et al., ``FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness,'' NeurIPS, 2022.
+
+\bibitem{triton}
+P. Tillet, H. T. Kung, and D. Cox, ``Triton: an intermediate language and compiler for tiled neural network computations,'' MAPL, 2019.
+
+\bibitem{cuda-python}
+NVIDIA Corporation, ``CUDA Python Documentation,'' NVIDIA CUDA Documentation.
+
+\bibitem{greencontexts}
+NVIDIA Corporation, ``Green Contexts,'' CUDA Programming Guide.
+
+\bibitem{nanovllm}
+GeeeekExplorer, ``nano-vLLM,'' GitHub repository, \url{https://github.com/GeeeekExplorer/nano-vllm}.
+
+\bibitem{vllm-prefix}
+vLLM Project, ``Automatic Prefix Caching,'' vLLM Documentation.
+
+\end{thebibliography}
+
+\end{document}

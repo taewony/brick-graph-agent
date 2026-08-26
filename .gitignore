@@ -1,14 +1,29 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 .venv/
 .uv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node.js (PDF 변환 툴체인 의존성)
+node_modules/
+.npm-cache/
 
 # OS / editor
 .DS_Store
+Thumbs.db
 *.swp
 .idea/
 .vscode/
+*.iml
 
 # Worktrees & Claude Code session state
 .worktrees/
@@ -16,3 +31,10 @@ __pycache__/
 
 # Local tooling caches
 .impeccable/
+.chrome-profile/
+
+# Runtime / test caches
+.runtime-tests/
+
+# Logs
+*.log

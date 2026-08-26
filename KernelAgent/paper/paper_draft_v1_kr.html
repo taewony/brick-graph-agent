@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cuTile 기반 고성능 LLM 추론 엔진 최적화 및 코딩 에이전트 협력 설계 실증 연구</title>
+    <style>
+        :root {
+            --bg-color: #f5f6f8;
+            --text-color: #2c3e50;
+            --heading-color: #1a237e;
+            --accent-color: #0d47a1;
+            --secondary-color: #1565c0;
+            --border-color: #cfd8dc;
+            --code-bg: #1e1e1e;
+            --code-text: #d4d4d4;
+            --quote-bg: #f0f4c3;
+            --box-bg: #eceff1;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', 'Malgun Gothic', 'Pretendard', sans-serif;
+            line-height: 1.75;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 50px 70px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 45px;
+            border-bottom: 3px double var(--heading-color);
+            padding-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.0em;
+            color: var(--heading-color);
+            margin-bottom: 10px;
+            line-height: 1.35;
+            word-break: keep-all;
+        }
+
+        .eng-title {
+            font-size: 1.3em;
+            color: #546e7a;
+            margin-bottom: 25px;
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            line-height: 1.3;
+        }
+
+        .authors {
+            font-size: 1.05em;
+            font-weight: bold;
+            color: #37474f;
+            margin-bottom: 5px;
+        }
+
+        .affiliation {
+            font-size: 0.9em;
+            color: #78909c;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+
+        .abstract {
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--heading-color);
+            padding: 25px 30px;
+            margin: 35px 0;
+            border-radius: 0 6px 6px 0;
+            text-align: justify;
+        }
+
+        .abstract-title {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: var(--heading-color);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .abstract p {
+            margin: 0 0 15px 0;
+            font-size: 0.95em;
+            color: #37474f;
+        }
+
+        .abstract p:last-child {
+            margin-bottom: 0;
+        }
+
+        .keywords {
+            font-size: 0.9em;
+            color: #455a64;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+
+        h2 {
+            color: var(--heading-color);
+            font-size: 1.45em;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 6px;
+            margin-top: 45px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        h3 {
+            color: var(--secondary-color);
+            font-size: 1.15em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        p {
+            margin-bottom: 20px;
+            text-align: justify;
+            text-indent: 10px;
+            font-size: 1.0em;
+        }
+
+        ul, ol {
+            margin-bottom: 20px;
+            padding-left: 30px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            text-align: justify;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 35px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92em;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 14px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #eceff1;
+            color: var(--heading-color);
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fcfdfe;
+        }
+
+        .caption {
+            font-size: 0.88em;
+            color: #546e7a;
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: "Consolas", "Courier New", monospace;
+            font-size: 0.88em;
+            margin: 25px 0;
+            border: 1px solid #1c2833;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: "Consolas", "Courier New", monospace;
+            background-color: #eceff1;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.92em;
+            color: #c2185b;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: 1em;
+            color: inherit;
+        }
+
+        .highlight {
+            color: #569cd6;
+            font-weight: bold;
+        }
+
+        .comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        .string {
+            color: #ce9178;
+        }
+
+        .number {
+            color: #b5cea8;
+        }
+
+        .math {
+            font-family: "Times New Roman", Times, serif;
+            font-style: italic;
+            font-weight: bold;
+        }
+
+        .insight-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #1e88e5;
+            border-radius: 0 4px 4px 0;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .insight-box-title {
+            font-weight: bold;
+            color: #0d47a1;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .insight-box-title::before {
+            content: "💡";
+            margin-right: 8px;
+        }
+
+        .references ol {
+            padding-left: 20px;
+        }
+
+        .references li {
+            margin-bottom: 12px;
+            text-align: justify;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 15px 5px;
+            }
+            .container {
+                padding: 30px 20px;
+            }
+            h1 {
+                font-size: 1.6em;
+            }
+            .eng-title {
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>cuTile 기반 고성능 LLM 추론 엔진 최적화 및 코딩 에이전트 협력 설계 실증 연구</h1>
+            <div class="eng-title">An Efficient LLM Serving Engine with Tile-based Python DSL and Coding Agent Co-design on Windows OS</div>
+            <div class="authors">병렬 및 분산 시스템 연구실</div>
+            <div class="affiliation">한국정보과학회 학술대회 투고 드래프트</div>
+        </header>
+
+        <div class="abstract">
+            <div class="abstract-title">요약 (Abstract)</div>
+            <p>
+                거대 언어 모델(LLM) 서빙 엔진의 지연 시간 및 처리량 성능은 GPU 메모리와 연산 대역폭 병목을 해결하기 위한 하드웨어 수준의 커널 최적화에 직결된다. 그러나 vLLM 등 대다수의 고성능 서빙 프레임워크는 Linux 환경에 강력하게 종속되어 있어, 연구 및 교육 목적과 로컬 온프레미스 장비가 집중된 Windows OS 생태계로의 이식성에 심각한 장벽이 존재한다. 본 연구는 Windows OS 환경에서 NVIDIA의 최신 JIT 컴파일 기반 Python DSL인 cuTile 및 CUDA Python 1.0을 도입하여 크로스 플랫폼 호환성을 보장하는 고성능 추론 엔진인 <strong>micro-vllm</strong>을 설계하고 구현하였다.
+            </p>
+            <p>
+                특히, 복잡한 GPU 커널 코딩과 E2E 시스템 설계 병목의 탐색 공간을 효율적으로 최적화하기 위해, 별도의 자율형 에이전트 루프 시스템 구축 대신 <strong>AI 코딩 에이전트(Coding Agent)</strong>를 공동 설계(Co-design) 및 병목 분석 파트너로 활용하는 인간-에이전트 협력적 최적화 파이프라인을 구축하였다. 본 논문은 이 파이프라인을 바탕으로 미시적 커널 수준에서 레지스터 스필링(Register Spilling)을 유발하는 물리적 하드웨어 임계치를 규명하고 64x64 타일링 스케줄링을 도출하였으며, Paged KV 캐시 상의 dynamic shape mismatch를 sub-millisecond 수준에서 해소하는 벡터화된 논리-물리 블록 재배치 기법을 고안하였다.
+            </p>
+            <p>
+                나아가 시스템 이식 과정에서 JIT 컴파일 방지를 위한 dynamic padding 기법이 오히려 PyTorch caching allocator와 가비지 컬렉터의 메모리 할당 스래싱을 촉발하여 전체 생성 처리량을 67.0% 저하시키는 시스템적 부작용을 규명하고 무패딩 Eager Serving 구조를 확립하였다. 최종적으로 CUDA Green Contexts 기술을 적용하여 SM 자원을 Prefill(32 SM)과 Decode(16 SM) 영역으로 물리 격리함으로써 단일 소비자용 GPU(RTX 5070) 환경에서 **중간값 Decode 지연시간(P50 ITL) 14.0% 단축 및 전체 토큰 처리량 10.6% 향상(459.73 tok/s)**을 달성하였다.
+            </p>
+            <div class="keywords">
+                <strong>핵심어(Keywords):</strong> 거대 언어 모델(LLM) 서빙, cuTile, CUDA Python 1.0, Windows OS, 코딩 에이전트 공동 설계, Green Contexts, 메모리 스래싱
+            </div>
+        </div>
+
+        <h2>1. 서론 (Introduction)</h2>
+        <p>
+            최근 생성형 AI 기술의 급격한 성장에 힘입어 로컬 온프레미스 장비나 오프라인 연구실 환경에서 LLM을 구동하려는 수요가 폭증하고 있다. 특히 RAG(Retrieval-Augmented Generation), 로컬 지식베이스 구축, 그리고 기업 정보 보안을 유지하기 위한 로컬 프라이빗 추론 환경 구축은 현업 시스템 설계에 있어 필수적인 과제이다. 그러나 vLLM이나 TensorRT-LLM 등 실용적으로 널리 쓰이는 대규모 서빙 아키텍처들은 Triton 커널 컴파일러, FlashAttention 패키지, 그리고 분산 텐서 통신용 NCCL 라이브러리 등 강력한 Linux 독점 환경에 강하게 묶여 있다. 이로 인해 데스크톱 컴퓨터와 로컬 서빙의 보편적 운영체제인 Windows 환경에서는 WSL2(Windows Subsystem for Linux) 우회를 통한 가상화 비용과 물리 기기 다이렉트 제어 제약 등으로 최상의 연산 성능을 보장하기 어려운 한계가 존재했다.
+        </p>
+        <p>
+            본 연구는 이러한 크로스 플랫폼 장벽을 해소하고 최적의 로컬 LLM 서빙 환경을 제공하기 위해, Windows OS 환경에서 동작하는 NVIDIA의 새로운 <strong>cuTile</strong> Python DSL과 <strong>CUDA Python 1.0</strong> 기반의 고성능 서빙 엔진인 <strong>micro-vllm</strong>을 개발하였다. 이 과정에서 C++ 수준의 직접적인 CUDA 프로그래밍 오버헤드와 하드웨어 프로파일링 분석의 긴 탐색 주기를 단축시키기 위해, <strong>AI 코딩 에이전트(Coding Agent)</strong>와의 협력적 튜닝 파이프라인을 가동하여 시스템을 설계, 실험 및 개선해 나가는 실험과학적 엔지니어링 접근을 도입하였다.
+        </p>
+        <p>
+            본 논문은 단일 연산 커널 수준(Micro-level)에서의 최적화 구조가 실제 엔드투엔드(E2E) 서비스 아키텍처로 통합될 때 야기되는 '추상화의 누수(Abstraction Leak)' 병목 현상을 실증적으로 추적하고 그 대안을 제시한다. 구체적으로는 dynamic padding 최적화가 유발하는 PyTorch CUDA caching allocator의 호스트-디바이스 메모리 스래싱 문제를 규명하였으며, CUDA Green Contexts 기술을 통한 하드웨어 자원 격리 벤치마크 결과를 분석하여 디코딩의 메모리 대역폭 향상과 캐시 효율성을 입증하였다.
+        </p>
+
+        <h2>2. 관련 연구 및 배경 (Related Work & Background)</h2>
+        
+        <h3>2.1. LLM 서빙 엔진과 PagedAttention</h3>
+        <p>
+            LLM의 자기회귀적(Autoregressive) 생성 루프는 매 스텝마다 과거의 토큰 정보(Key, Value)를 저장하고 재사용하는 KV 캐싱을 핵심 구조로 가진다. vLLM[1]은 이 KV 캐시를 고정 크기의 물리적 페이지 블록으로 분할 관리하는 PagedAttention 기법을 통해 GPU 메모리의 외부/내부 단편화를 원천 차단하고 처리량을 혁신적으로 개선하였다. 그러나 기존 시스템들은 분산 환경을 전제로 NCCL 통신 레이어에 의존하고 있어, 단일 혹은 소비자용 GPU 환경 및 Windows와 같은 이기종 OS에서의 호환성이 현저히 떨어진다.
+        </p>
+
+        <h3>2.2. CUDA Python 1.0 및 cuTile DSL</h3>
+        <p>
+            최근 공식 릴리즈된 CUDA Python 1.0[2]은 Python 런타임 환경에서 하드웨어 드라이버 및 CUDA API를 직접 조작할 수 있는 안정적인 바인딩 계층을 마련하였다. 이 중 **cuTile** DSL은 행렬 곱셈이나 어텐션 연산 등의 집약 연산을 타일(Tile) 단위로 기하학적으로 추상화하여, 레지스터 및 공유 메모리 캐싱 레이아웃을 Python 코딩 수준에서 제어할 수 있도록 돕는다. 특히 CUDA 13.3부터는 Compute Capability 9.0 (Hopper) 아키텍처까지 균일하게 지원하므로, 로컬 데스크톱(RTX 40/50 시리즈)에서 작성된 어텐션 타일 커널이 클라우드 서버(H100/H200)로 추가적인 수정이나 재작성 공정 없이 투명하게 컴파일 및 포팅되는 강력한 하드웨어 호환성(Hardware Portability)을 확보할 수 있다.
+        </p>
+
+        <h3>2.3. 시스템 최적화 파트너로서의 코딩 에이전트</h3>
+        <p>
+            기존의 LLM 코드 생성 및 자동 최적화 연구들은 정적으로 파라미터를 탐색하는 단순 그리드 서치(Grid Search)나 신택스 에러를 수정하는 자율 루프 시스템 모델에 치중해 왔다. 그러나 하드웨어 수준의 커널 최적화는 컴파일러 메타데이터 해석, 레지스터 스필링 감지, 호스트-디바이스 메모리 할당 특성 등 다차원적 지식의 융합이 필요하다. 본 연구에서는 자율 구동되는 루프 시스템을 직접 개발하는 대신, 개발자와 긴밀히 상호작용하는 <strong>코딩 에이전트(Coding Agent)</strong>를 설계 및 미시적/거시적 최적화의 피드백 파트너로 활용함으로써 복잡한 GPU 시스템 튜닝을 인간의 가이드 하에 가속하는 '컴파운드 시스템 엔지니어링(Compound System Engineering)' 방법론을 구현하였다.
+        </p>
+
+        <h2>3. 연구실-실험실 규약 기반의 코딩 에이전트 공동 설계 방법론 (Co-design Protocol between Architect and Executor)</h2>
+        <p>
+            단일 GPU의 극단적인 하드웨어 자원 제약 하에서 LLM 추론 엔진 커널을 효과적으로 마이그레이션 및 최적화하기 위해서는, 고수준 아키텍처 모델과 저수준 물리 연산 간의 긴밀한 상호작용이 필수적이다. 본 연구는 시스템 개발 과정의 과학적 엄밀성과 탐색 효율성을 보장하기 위해, 호스트 머신 기반의 <strong>연구실(Architect / Host Machine)</strong>과 타겟 디바이스 기반의 <strong>실험실(Executor / Target Machine)</strong> 간의 명확한 피드백 루프 작동 메커니즘을 정의하고, 이를 인간 연구자와 코딩 에이전트가 공동 가동하는 협력 설계(Co-design) 프로토콜로 체계화하였다.
+        </p>
+
+        <div style="background-color: #fafbfc; border: 1px solid var(--border-color); border-radius: 4px; padding: 20px; margin: 25px 0; font-family: monospace; font-size: 0.9em; line-height: 1.45; color: #2c3e50; text-align: left; text-indent: 0;">
+            <strong>[연구실(Host)-실험실(Target) 간의 성능 최적화 규약 아키텍처]</strong><br>
+            +-------------------------------------------------------------------------+<br>
+            |                연구실 (Architect / Host Machine)                        |<br>
+            |  - 인간 연구자: 고수준 시스템 사양 명세(Paged Cache 등) 및 의사결정      |<br>
+            |  - 코딩 에이전트: 하드웨어 한계 지식 인지 및 탐색 공간 코드 생성        |<br>
+            +-------------------------------------------------------------------------+<br>
+            |           |                                                 ^           |<br>
+            |           |                                                 |           |<br>
+            |           | S2E Protocol (Spec-to-Execution)                | T2K       |<br>
+            |           | - 마이그레이션 커널 코드 배포                   | Protocol  |<br>
+            |           | - 타일링 스케줄링 & 컴파일 옵션                 | (Telemetry|<br>
+            |           v                                                 | -to-      |<br>
+            +-----------------------------------------------------------------+ Knowledge)|<br>
+            |                실험실 (Executor / Target GPU Machine)           |           |<br>
+            |  - JIT 컴파일러: cuTile 실시간 PTX 변환 및 커널 론칭            |           |<br>
+            |  - 원격 분석기: Nsight Compute 하드웨어 물리 데이터 수집        |           |<br>
+            |  - E2E 벤치마커: Caching Allocator 스래싱 & Throughput 계측      |           |<br>
+            +-------------------------------------------------------------------------+
+        </div>
+
+        <h3>3.1. 상호작용 규약(Co-design Protocol)의 정의</h3>
+        <p>
+            연구실과 실험실은 모델 마이그레이션 전 주기 동안 다음의 두 가지 핵심 서브 규약을 통하여 정량적 피드백 루프를 가동한다.
+        </p>
+        <ul>
+            <li>
+                <strong>Spec-to-Execution (S2E) Protocol</strong>: 연구실(Architect)이 정의한 수학적 사양과 튜닝 파라미터(Tile 크기, Pipelining 단계 등)를 실험실(Executor)의 실시간 JIT 컴파일 환경으로 동적 배포(Deploy) 및 전송하는 규약이다.
+            </li>
+            <li>
+                <strong>Telemetry-to-Knowledge (T2K) Protocol</strong>: 실험실(Target Machine)에서 실제로 커널을 기동하여 계측한 물리적 원격 측정값(Nsight Compute 프로파일 메트릭 및 PyTorch Caching Allocator 지연시간)을 지식화하여 연구실(Host)로 반환하는 규약이다. 반환된 원격 지표들은 단순한 모니터링 로그를 넘어, 연구실 코딩 에이전트의 다음 단계 코드 작성 및 최적화 타일 차원 가지치기를 유도하는 **논리 제약 조건(Logical Constraints)**으로 즉시 치환된다.
+            </li>
+        </ul>
+
+        <h3>3.2. 규약 기반의 물리 제약 정밀 탐색 및 실증 사례</h3>
+        <p>
+            이 규약의 우수성은 어텐션 연산(FMHA) 마이그레이션 시 마주한 물리적 한계인 레지스터 스필링(Register Spilling) 해결 과정을 통해 실증된다.
+        </p>
+        <p>
+            초기 S2E 규약에 따라 실험실에 이식된 128x128 타일의 FMHA 커널은 실험실 내 텔레메트리 계측 과정(T2K)에서 심각한 병목을 노출했다. Target Machine의 Nsight Compute 계측 결과, 해당 타일 차원이 스레드당 물리 레지스터 한계인 255개를 초과하여 대량의 데이터가 로컬 메모리 계층(L1/VRAM)으로 누수(Spill)되고 있음이 포착되었다.
+        </p>
+        <p>
+            T2K를 통해 이 구조적 실패 지표를 보고받은 연구실의 코딩 에이전트는 즉시 '128 크기의 타일은 레지스터 부족으로 인해 유해하다'는 논리 제약을 아키텍처 모델에 삽입하고, 탐색 공간을 $64 \times 64$ 타일링 구조로 한정하여 재배포하는 S2E 피드백을 신속히 단행하였다. 결과적으로 실험실의 레지스터 occupancy를 100%로 확보하고 온라인 소프트맥스를 인메모리 퓨전하여 실행 시간을 4.3% 단축시키는 최적의 타일링 설정을 수렴시켰으며, 이는 규약 기반의 동적 HW-SW 협업 설계가 복잡한 병목 영역을 과학적이고 체계적으로 탐색 제어해 냄을 증명한다.
+        </p>
+
+        <h2>4. micro-vllm 아키텍처 및 핵심 최적화 (micro-vllm Architecture & Optimizations)</h2>
+        <p>
+            본 장에서는 Windows OS와 단일 소비자용 GPU 환경에 맞추어 마이그레이션하고 최적화한 micro-vllm 서빙 엔진의 핵심 구조적 개선 사항을 기술한다.
+        </p>
+
+        <h3>4.1. Gloo 기반 분산 통신 백엔드 이식</h3>
+        <p>
+            vLLM과 같은 프로덕션 서빙 프레임워크는 대규모 모델의 분산 연산을 위해 Linux 계열에서만 작동하는 NCCL 백엔드를 기본적으로 사용한다. Windows 네이티브 환경에서 분산 텐서 연산의 컴파일 호환성을 보장하기 위해, 우리는 PyTorch Distributed의 <strong>Gloo 백엔드</strong>를 다중 디바이스 분산 스택에 이식하였다.
+        </p>
+        <pre><span class="highlight">import</span> os
+<span class="highlight">import</span> torch.distributed <span class="highlight">as</span> dist
+
+<span class="comment"># Windows 환경이거나 단일 GPU 연산 시 Gloo 백엔드로 자동 폴백</span>
+backend = <span class="string">"gloo"</span> <span class="highlight">if</span> (os.name == <span class="string">"nt"</span> <span class="highlight">or</span> world_size == <span class="number">1</span>) <span class="highlight">else</span> <span class="string">"nccl"</span>
+dist.init_process_group(backend, init_method=<span class="string">"tcp://localhost:2333"</span>, world_size=world_size, rank=rank)</pre>
+        <p>
+            이를 통해 분산 통신 계층의 대대적인 코드 수정이나 이진 컴파일(Binary compilation) 충돌 없이, 텐서 병렬 선형 레이어(Linear Layer)의 논리 구조를 Windows 네이티브 실행 환경으로 완전히 투명하게 마이그레이션할 수 있었다.
+        </p>
+
+        <h3>4.2. 벡터화된 논리-물리 블록 캐시 재구성</h3>
+        <p>
+            실제 서비스 루프 내에서 prefix-cached prefill 연산(기존에 보존된 역대 프롬프트 이력 캐시와 신규 사용자 입력을 융합하는 단계)을 수행할 때, 새롭게 인가된 Key, Value 텐서 모양(Shape)과 메모리 풀 내부의 논리적 시퀀스 크기 간의 불일치로 인한 런타임 셰이프 오류(Runtime shape mismatch)가 빈번히 유발된다.
+        </p>
+        <p>
+            우리는 이 셰이프 매칭을 CPU 연산 루프를 사용하지 않고 GPU 상에서 병렬적으로 처리하기 위해, <strong>벡터화된 논리-물리 캐시 재구성 레이어</strong>를 제안하고 적용하였다. context 길이 <span class="math">seqlen_k</span>에 해당하는 메모리 오프셋 주소를 텐서 인덱스 연산으로 변환하여 물리 주소로 고속 매핑한다.
+        </p>
+        <pre><span class="comment"># GPU 상에서 dynamic logical index를 physical offset으로 고속 매핑</span>
+idx_seq = torch.arange(seqlen_k, device=block_table.device)
+logical_blk = torch.div(idx_seq, block_size, rounding_mode=<span class="string">'floor'</span>)
+offset = idx_seq % block_size
+physical_blk = block_table[b, logical_blk].long()
+
+k_4d[b, :, :seqlen_k, :] = k_cache[physical_blk, offset].transpose(<span class="number">0</span>, <span class="number">1</span>)
+v_4d[b, :, :seqlen_k, :] = v_cache[physical_blk, offset].transpose(<span class="number">0</span>, <span class="number">1</span>)</pre>
+        <p>
+            이 벡터화된 배치 재배치 로직은 GPU 오버헤드를 sub-millisecond 단위로 격하시켜 호스트 병목을 차단하고, dynamic continuous batching 상황에서의 형상 무결성을 완벽히 보장한다.
+        </p>
+
+        <h3>4.3. 단일 커널 최적화 (Tiled GEMM & FMHA 64x64)</h3>
+        <p>
+            FMHA(Fused Multi-Head Attention) 커널 설계 시, 메모리 계층 간의 IO 비용을 축소하기 위해 중간 연산 데이터인 attention score를 공유 메모리 및 레지스터 영역에 상주시켰다. online softmax 알고리즘을 타일 레벨에 주입하여 수치 안정성을 취하고, 디코딩과 prefill 단계의 효율성을 도모하는 causal masking을 cuTile 스레드-블록 연산에 통합하였다.
+        </p>
+
+        <h2>5. 호스트-디바이스 인터페이스 최적화 및 자원 격리 (Host-Device & Resource Isolation)</h2>
+
+        <h3>5.1. JIT 컴파일 스톰과 메모리 할당자 스래싱 딜레마</h3>
+        <p>
+            JIT 컴파일 기반 Python GPU DSL인 cuTile은 입력으로 전달되는 텐서 형상의 기하학적 변화에 반응하여 실시간으로 PTX 바이너리를 즉시 재빌드한다. continuous batching 서빙 환경 하에서는 동적으로 매 디코드 스텝마다 배치 크기와 시퀀스 길이가 변화하므로 JIT 컴파일이 무수히 유발되는 <em>JIT Compilation Storm</em>이 심각한 성능 지연을 만든다.
+        </p>
+        <p>
+            이러한 JIT 컴파일의 발생 빈도를 억제하기 위해, 우리는 텐서 형상의 차원을 256의 배수로 강제 정렬하는 <strong>dynamic padding</strong> 기법을 튜닝 옵션으로 적용해 보았다. 그러나 벤치마크 결과는 예상을 완전히 벗어나 성능이 급격히 저하되었다.
+        </p>
+        <p>
+            상세한 분석 결과, 이는 PyTorch의 <strong>CUDA 캐싱 할당자(caching allocator)와 가비지 컬렉터의 동작</strong> 때문인 것으로 밝혀졌다. 매 디코드 루프마다 가변적인 대형 임시 패딩 텐서를 메모리 상에 배정하고 채워 넣는(fill) 일련의 오버헤드는 호스트 메모리 관리자의 심각한 메모리 스래싱(Memory Thrashing)을 초래하여, JIT 컴파일러의 룩업 비용보다 최대 수십 배 더 무거운 CPU 런타임 지연을 유발하였다. 이에 본 논문은 eager-serving 모드 하에서는 임시 메모리 할당 오버헤드를 유발하는 패딩보다 무패딩 Eager 할당 방식을 유지하는 것이 시스템 E2E Throughput 측면에서 압도적인 우위를 점함을 실증 규명하였다.
+        </p>
+
+        <h3>5.2. CUDA Green Context 기반 SM 자원 분할 및 캐시 지역성 최적화</h3>
+        <p>
+            동적 동시 서빙 워크로드 하에서는 대량의 토큰을 처리하는 무거운 Prefill 연산이 개시될 시 GPU의 컴퓨팅 파워를 독점하여, 지연시간에 고도로 민감한 일반 클라이언트들의 디코드 연산이 중단되거나 지연이 심해지는 리소스 간섭 현상이 초래된다.
+        </p>
+        <p>
+            이를 예방하기 위해, 우리는 CUDA Python 1.0의 최신 하드웨어 분할 API인 <strong>Green Contexts</strong>[5]를 적용하여 RTX 5070 GPU의 전체 48개 SM 자원을 물리적으로 강제 파티셔닝하였다.
+        </p>
+        <ul>
+            <li><strong>Prefill Context (32 SMs)</strong>: 막대한 부동소수점 연산 처리가 동반되는 프롬프트 분석용 SM 그룹.</li>
+            <li><strong>Decode Context (16 SMs)</strong>: 실시간 응답 지연을 방어하기 위한 1토큰씩의 생성용 전용 SM 그룹.</li>
+        </ul>
+        <pre><span class="highlight">from</span> cuda.core <span class="highlight">import</span> Device, ContextOptions, SMResourceOptions
+
+<span class="comment"># RTX 5070 GPU의 48개 SM을 각각 32개, 16개로 물리 분리</span>
+dev = Device(<span class="number">0</span>)
+sm = dev.resources.sm
+long_grp, crit_grp = sm.split(SMResourceOptions(count=(<span class="number">32</span>, <span class="number">16</span>)))[<span class="number">0</span>]
+ctx_prefill = dev.create_context(ContextOptions(resources=[long_grp]))
+ctx_decode = dev.create_context(ContextOptions(resources=[crit_grp]))</pre>
+        <p>
+            단일 스레드 기반 순차 실행 서빙 루프의 특성상, Prefill과 Decode가 시간 축에서 엄밀하게 물리적으로 동시 실행되지 않음에도 불구하고, 디코드 커널의 활용 SM을 16개로 강제 구획하는 자원 격리는 GPU 전체 <strong>L2 캐시의 데이터 residency</strong>를 확고하게 보장하는 부수 효과를 창출하였다. 즉, 자원이 제한된 디코드 단계에서 L2 캐시 공간이 prefill 텐서에 의해 대량 방출(eviction)되는 현상을 제어함으로써 연산 효율이 극대화됨을 실증하였다.
+        </p>
+
+        <h2>6. 실험 및 평가 (Evaluation)</h2>
+
+        <h3>6.1. 실험 환경 및 시나리오</h3>
+        <p>
+            본 논문에서 제안한 시스템의 실증을 위해 Windows 11 OS 환경에서 NVIDIA GeForce RTX 5070 GPU(48 SM, 12GB VRAM, CUDA 13.3) 및 Qwen2.5-3B-Instruct 모델을 사용해 평가를 실시하였다. 동시 사용자 수는 256명으로 고정하고, 입력 및 출력의 크기를 100에서 1024 토큰 범위 내에서 동적으로 조율하는 continuous batching 상황을 재현하였다. 최악의 자원 경합 상황을 시뮬레이션하기 위해, 100토큰 디코드 클라이언트가 생성 연산을 정상 구동하는 중 5번째 스텝에서 2048토큰의 대규모 prefill 요청을 강제 투입하여 지연 시간 및 처리량을 모니터링하였다.
+        </p>
+
+        <h3>6.2. 패딩 여부에 따른 할당 오버헤드 실증 (Eager vs Padded)</h3>
+        <p>
+            표 1은 JIT 컴파일 방지를 위한 dynamic padding 기법(Padded cuTile)과 본 연구가 제안하는 무패딩 Eager 할당 기법(Eager cuTile) 간의 E2E 총 처리량(Throughput) 비교 결과이다.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>시스템 아키텍처 설정</th>
+                        <th>처리 총 토큰 수 (개)</th>
+                        <th>총 소요 시간 (초)</th>
+                        <th>생성 처리량 (tok/s)</th>
+                        <th>성능 대조 비율 (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Eager cuTile (No Padding - 본 연구)</strong></td>
+                        <td>133,966</td>
+                        <td>284.54</td>
+                        <td><strong>470.82</strong></td>
+                        <td>기준치 (100.0%)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Padded cuTile (dynamic padding)</strong></td>
+                        <td>133,966</td>
+                        <td>863.39</td>
+                        <td>155.16</td>
+                        <td style="color: red; font-weight: bold;">-67.0% (성능 하락)</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="caption">표 1. 셰이프 패딩 적용 유무에 따른 E2E 서빙 효율성 비교</div>
+        </div>
+        <p>
+            실험 측정 결과, dynamic padding 설정은 Eager 설정에 비해 전체 시스템 Throughput이 67.0% 하락하는 최악의 병목을 유발하였다. 이는 매 스텝 변동하는 배치 크기에 부응하기 위해 대형 패딩 텐서를 호스트 CPU 단에서 계속 신규 생성하고 복사하는 오버헤드가 cuTile JIT 컴파일 룩업 오버헤드에 비해 시스템 전체 성능에 치명적인 영향을 끼침을 직접적으로 반증한다.
+        </p>
+
+        <h3>6.3. Green Contexts 적용에 따른 성능 비교</h3>
+        <p>
+            표 2는 디코드 전용 SM 자원을 고정 분할한 Target(Green ON) 설정과 기존 Baseline(Green OFF) 설정 간의 4대 주요 서빙 품질 성능 비교 결과이다.
+        </p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>평가 성능 지표 (Metric)</th>
+                        <th>Baseline (Green OFF)</th>
+                        <th>Target (Green ON)</th>
+                        <th>개선 비율 (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>TTFT (Prefill Latency)</strong></td>
+                        <td>244.60 ms</td>
+                        <td>243.42 ms</td>
+                        <td style="color: green;">-0.5% (유지)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Decode P50 ITL (Median)</strong></td>
+                        <td>48.63 ms</td>
+                        <td><strong>41.83 ms</strong></td>
+                        <td style="color: blue; font-weight: bold;">-14.0% (단축)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Decode P99 ITL (Tail)</strong></td>
+                        <td>85.31 ms</td>
+                        <td>84.34 ms</td>
+                        <td style="color: green;">-1.1% (안정화)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total Throughput (총 처리량)</strong></td>
+                        <td>415.50 tok/s</td>
+                        <td><strong>459.73 tok/s</strong></td>
+                        <td style="color: red; font-weight: bold;">+10.6% (향상)</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="caption">표 2. Qwen2.5-3B-Instruct 기반 Baseline vs Green Contexts 성능 비교</div>
+        </div>
+        <p>
+            측정 결과, Green Contexts를 활성화하여 SM 자원을 Prefill 32개, Decode 16개로 분할 구획한 타겟 설정은 베이스라인 대비 <strong>중간값 Decode 지연시간(P50 ITL)을 14.0% 단축</strong>시키는 성과를 보였다. 더불어 전체 토큰 처리량(Throughput) 역시 <strong>10.6% 증가</strong>하는 고무적인 성능 우위를 보였다. 이는 디코드용 SM 수량을 16개로 강제 한정하여 디코드 어텐션 연산 시 필요한 가중치와 토큰 정보가 L2 캐시 영역에 높은 비율로 residency를 확보할 수 있도록 캐시 스래싱을 차단한 덕분이다. 
+        </p>
+        <p>
+            동시에, Prefill 연산의 가용한 하드웨어 파티션이 48개에서 32개로 감소했음에도 불구하고 TTFT(First Token Latency)의 지연 시간 증가는 단 -0.5% 수준으로 완벽하게 제어되었다. 이는 단일 사용자 혹은 소규모 동시 배치 수준에서의 batch-1 prefill 연산은 RTX 5070 GPU의 48개 SM 연산 파이프라인 전체를 가득 채우지 못하고 32개 SM 부근에서 이미 최적의 하드웨어 occupancy 포화 지점(efficiency sweet-spot)에 도달함을 지시한다.
+        </p>
+
+        <div class="insight-box">
+            <div class="insight-box-title">시스템 아키텍처적 시사점 (Systems Insight)</div>
+            <p>
+                본 실험을 통해 단일 GPU 내에서의 물리적 SM 자원 분할은 단순 성능 개선을 넘어, 이기종 동적 워크로드가 동시 구동되는 추론 서빙 파이프라인에 필수적인 L2 캐시 지역성을 지키는 수단임이 검증되었다. 또한, 본 연구의 개발 전 주기에 걸쳐 코딩 에이전트는 미시적 레지스터 누수 감지 및 물리 캐시 벡터 재구성에 필요한 구체적 텐서 정렬 스크립트를 능동적으로 도출하는 등, 인간 엔지니어의 상위 설계 의도를 실질적인 시스템 프로그래밍 최적화 결과물로 변환하는 데 중추적인 코디자인(Co-design) 가치를 실증해 주었다.
+            </p>
+        </div>
+
+        <h2>7. 결론 및 향후 연구 (Conclusion & Future Work)</h2>
+        <p>
+            본 논문은 Windows OS 환경에서 cuTile DSL과 CUDA Python 1.0을 결합한 독창적인 고성능 LLM 추론 엔진인 micro-vllm을 구현하고 E2E 수준의 병목 요인을 실증 규명하였다. 특히 코딩 에이전트와의 밀접한 협업 설계 및 미시 프로파일링 피드백을 통해 64x64 타일링과 벡터화된 논리-물리 주소 변환 레이어를 구축하였으며, eager 모드 서빙 시 JIT 방지용 패딩 기법이 가혹한 메모리 할당자 스래싱을 유발하여 Throughput을 67.0% 저하시키는 역효과가 있음을 정량적 벤치마크를 통해 최초 입증하였다. 아울러 Green Contexts 기반 SM 파티셔닝 튜닝을 통해 Decode P50 ITL을 14.0% 단축하는 시스템 개선을 실현하였다.
+        </p>
+        <p>
+            현재 단일 스레드 순차 엔진 구조 하에서는 시간 축 상에서의 Prefill과 Decode 연산이 완벽하게 독립 병렬 수행되지 못하는 하드웨어 제약이 존재한다. 향후 연구로는 엔진 루프를 비동기 멀티스레드(Asynchronous Multi-threaded) 아키텍처로 전면 이원화하여, 서로 다른 GPU 스트림과 물리 SM 파티션 상에서 Prefill과 Decode가 오버랩(Overlap)되어 동작하는 완전한 E2E 자원 격리를 구현해 나갈 계획이다.
+        </p>
+
+        <h2>참고문헌 (References)</h2>
+        <div class="references">
+            <ol>
+                <li>Kwon, W., Li, Z., Zhuang, S., et al. "Efficient Memory Management for Large Language Model Serving with PagedAttention." <em>Proceedings of the 29th Symposium on Operating Systems Principles (SOSP)</em>, 2023.</li>
+                <li>NVIDIA Corporation. "NVIDIA CUDA 13.3 Enhances GPU Development with Tile Programming in C++ Compiler, Autotuning, and Python Updates." <em>NVIDIA Developer Blog</em>, 2026.</li>
+                <li>Tillet, P., Kung, H. T., & Cox, D. "Triton: an intermediate language and compiler for tiled neural network computations." <em>Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages (MAPL)</em>, 2019.</li>
+                <li>Dao, T., Fu, D. Y., Ermon, S., et al. "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness." <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2022.</li>
+                <li>PyTorch Foundation. "torch.cuda.green_contexts: Granular Resource Partitioning for CUDA Kernels." <em>PyTorch Beta Documentation</em>, 2025.</li>
+                <li>NVIDIA Corporation. "cuTile Python API Reference Guide." <em>NVIDIA CUDA Documentation</em>, 2026.</li>
+            </ol>
+        </div>
+
+        <hr style="border: 0; border-top: 2px solid var(--border-color); margin: 50px 0;">
+
+        <h2>부록 A: cuTile 프로그래밍 모델 핵심 개념 (cuTile Programming Model)</h2>
+        <p>
+            NVIDIA가 도입한 cuTile DSL은 전통적인 CUDA C++의 극단적인 저레벨 복잡성과 PyTorch의 고수준 추상화 사이의 간극을 메우는 타일 기반 프로그래밍 패러다임이다. 주요 동작 아키텍처는 다음과 같은 핵심 개념들을 내포한다.
+        </p>
+        
+        <h3>1. 타일 추상화 (Tile Representation)</h3>
+        <p>
+            cuTile 환경에서 모든 행렬 및 벡터 데이터는 고정된 크기의 기하학적 블록인 <strong>타일(Tile)</strong>로 정의된다. 개발자는 개별 스레드 레벨에서 글로벌 메모리 주소를 하드코딩해 스레드 ID 인덱싱을 연산할 필요 없이, 스레드 블록 단위로 연계된 논리 타일 좌표계를 제어한다. JIT 컴파일러는 이 타일 구성을 수신하여 각 GPU의 레지스터 구조에 맞춰 루프 전개(Loop unrolling), 벡터 로드/스토어 지시어 생성, 스레드 레이아웃 배치를 백그라운드에서 전 자동화한다.
+        </p>
+
+        <h3>2. MMA (Matrix Multiply-Accumulate) 하드웨어 제어</h3>
+        <p>
+            cuTile은 Tensor Core 하드웨어가 직접 처리하는 고속 행렬 연산 지시어인 MMA를 `ct.mma`로 래핑하여 제공한다. 이는 레지스터 타일 내에서 독립적으로 수행되는 <span class="math">D = A &times; B + C</span> 누적 연산을 의미한다. 글로벌 VRAM 메모리 버스를 거치지 않고 순수 레지스터 파일(Register File) 상에서 전량 연산이 완결되므로 연산 능력이 GPU 메모리 대역폭 한계와 별개로 최대로 가동된다.
+        </p>
+
+        <h3>3. 협력적 메모리 로드 및 스토어 (Cooperative Memory Operations)</h3>
+        <p>
+            VRAM 글로벌 메모리와 스레드 레지스터 타일 간의 데이터 복사는 협력적 로드(`ct.load`) 및 스토어(`ct.store`) 명령어를 통해 블록 내 스레드들이 공유 메모리를 매개로 공동 집행한다. 특히 cuTile은 sequence length가 타일의 기본 블록 차원(예: 64)과 완전 정렬되지 않고 어중간하게 남은 자투리 영역(<span class="math">T < 64</span>)에 대해 `ct.PaddingMode.ZERO`와 같은 제로 필링 패딩 모드를 네이티브 제공하여, CUDA 개발 시 흔히 마주하는 Out-of-bounds 메모리 접근 결함을 안전하게 원천 차단해 준다.
+        </p>
+
+        <h3>4. Compute Capability 9.0 (Hopper) 아키텍처 이식성</h3>
+        <p>
+            CUDA 13.3에 탑재된 최신 컴파일러 엔진은 Compute Capability 9.0 이상에서 도입된 Hopper 아키텍처 전용 텐서 코어 가속 및 비동기 트랜잭션 메모리 제어 규칙을 cuTile DSL로 완벽 호환한다. 이로써 단일 소비자용 RTX GPU에서 컴파일되는 동일한 Python 코드가 엔터프라이즈 전용인 H100/H200 머신으로 진입 시, 하드웨어 명령어의 재생성이나 아키텍처 포팅 공정 없이 Hopper 네이티브 고성능 파이프라인으로 100% 투명하게 컴파일을 승계할 수 있게 된다.
+        </p>
+
+        <h2>부록 B: LLM 추론 동작 원리 핵심 개념 (LLM Inference Concepts)</h2>
+        <p>
+            LLM 서비스 파이프라인을 효율적으로 최적화하기 위해서는 생성 추론 모델의 미시적/거시적 연산 특성을 정확히 이해하는 것이 선행되어야 한다.
+        </p>
+
+        <h3>1. Prefill 단계와 Decode 단계의 극적인 하드웨어 대조</h3>
+        <ul>
+            <li>
+                <strong>Prefill Phase (프롬프트 연산)</strong>: 사용자가 주입한 입력 텍스트 전체를 동시에 파싱하는 단계이다. Query, Key, Value 간의 대규모 행렬 곱셈이 융합 수행되므로, 대량의 병렬 플롭스(FLOPs) 연산량이 필요한 <strong>연산 성능 제한적(Compute-bound)</strong> 성격을 가진다.
+            </li>
+            <li>
+                <strong>Decode Phase (토큰 생성)</strong>: 이전까지 생성된 모든 토큰 정보를 기반으로 오직 1개의 다음 토큰을 순차 예측하는 단계이다. 매번 Query 벡터(길이 1)와 대규모 KV 캐시 행렬 간의 벡터-행렬 곱셈(GEMV)이 이루어지며, 모델의 방대한 가중치 파라미터를 VRAM 메모리에서 지속적으로 다시 읽어 들여야 하므로 **메모리 대역폭 제한적(Memory-bandwidth bound)** 특성이 시스템 병목을 지배한다.
+            </li>
+        </ul>
+
+        <h3>2. KV 캐싱 (KV-Caching) 및 Paged KV Cache</h3>
+        <p>
+            자기회귀 예측에서 과거 토큰들의 Key, Value를 매번 처음부터 다시 연산하게 되면 스텝이 반복될수록 계산 복잡도가 시퀀스 길이에 비례해 제곱배(<span class="math">O(N^2)</span>)로 누적 증가하는 치명적인 성능 저하가 일어난다. 이를 차단하고자 과거 토큰의 연산 결과인 Key, Value 벡터들을 VRAM 상에 정적 보존해 두는 것이 <strong>KV 캐시</strong>이다. 
+        </p>
+        <p>
+            그러나 dynamic serving 환경에서 가변 시퀀스의 크기에 맞춰 가상 메모리를 통째로 사전 할당하면 극심한 외부/내부 메모리 파편화(Fragmentation)가 발생한다. <strong>Paged KV Cache</strong>는 OS의 가상 메모리 기법을 빌려 VRAM의 캐시 영역을 일정한 블록(Block) 단위로 물리 파티셔닝하고, 논리 주소를 block table을 거쳐 매핑 관리함으로써 VRAM 단편화를 완전히 차단하는 vLLM의 핵심 기반 기술이다.
+        </p>
+
+        <h3>3. Continuous Batching (연속 배치 처리)</h3>
+        <p>
+            기존의 정적 배칭(Static Batching)은 배치에 속한 모든 사용자 시퀀스들의 생성이 전량 종결될 때까지 신규 요청이 대기해야 하므로, 생성 토큰의 길이가 서로 다른 불균일한 요청 환경 하에서 GPU 자원 점유가 낭비되는 병목이 극심했다. <strong>Continuous Batching</strong>은 반복 연산의 매 단일 스텝(Iteration-level) 단위로 배치를 동적 해체하여 생성 완료된 사용자는 내보내고(Decode), 신규 유입 사용자는 집어넣어(Prefill) VRAM 리소스 occupancy를 상시 극대화하는 서빙 제어 스케줄러 기법이다.
+        </p>
+
+        <h3>4. CUDA Graph 런타임 최적화</h3>
+        <p>
+            GPU가 대형 어텐션 연산을 수행하는 시간보다, CPU 호스트 측에서 드라이버 API를 호출해 커널 실행 신호(Kernel launch)를 보내는 오버헤드가 더 크게 지연을 유도하는 '호스트 바운드 병목'이 빈번히 발생한다. <strong>CUDA Graph</strong>는 이러한 일련의 GPU 연산 커널 스트림을 사전에 단일 그래프 바이너리로 캡처(Capture)하여 하드웨어 메모리에 등록한 후, CPU의 매 스텝 개입 없이 원타임 신호만으로 연속 기동시키는 커널 퓨전 및 오버헤드 원천 제거 메커니즘이다.
+        </p>
+    </div>
+</body>
+</html>

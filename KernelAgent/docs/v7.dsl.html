@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v7.dsl.md - 커널 엔지니어링 시스템 명세</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #2c3e50;
+            --primary-color: #1a237e;
+            --secondary-color: #0d47a1;
+            --border-color: #cfd8dc;
+            --code-bg: #1e1e1e;
+            --code-text: #abb2bf;
+            --xml-tag-color: #e06c75;
+            --xml-attr-color: #d19a66;
+            --xml-comment-color: #5c6370;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            line-height: 1.7;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            font-size: 1.8em;
+        }
+
+        .xml-root-label {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: var(--xml-tag-color);
+            background-color: #ffebee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: #fafbfc;
+        }
+
+        section h2 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            font-size: 1.3em;
+            font-family: monospace;
+        }
+
+        h3 {
+            color: #37474f;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .tag-info {
+            font-family: monospace;
+            color: var(--xml-tag-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .attr-info {
+            font-family: monospace;
+            color: var(--xml-attr-color);
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        ul, ol {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 15px 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid #282c34;
+            margin: 15px 0;
+        }
+
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #eceff1;
+            color: #c2185b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 1em;
+        }
+
+        .comment {
+            color: var(--xml-comment-color);
+            font-style: italic;
+        }
+
+        .yaml-block {
+            background-color: #f1f3f5;
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.92em;
+            border-radius: 0 4px 4px 0;
+            margin: 15px 0;
+        }
+
+        .stage-box {
+            border: 1px solid #b2dfdb;
+            background-color: #e0f2f1;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .stage-box h4 {
+            margin: 0 0 10px 0;
+            color: #004d40;
+            font-size: 1.1em;
+        }
+
+        .stage-meta {
+            font-size: 0.85em;
+            color: #555;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #b2dfdb;
+            padding-bottom: 5px;
+        }
+
+        .rule-box {
+            border-left: 4px solid #ffb300;
+            background-color: #fffde7;
+            padding: 12px 18px;
+            margin-bottom: 15px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .rule-box strong {
+            color: #ff6f00;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>v7.dsl.md - 커널 엔지니어링 시스템 명세</h1>
+        <div class="xml-root-label">&lt;kernel_engineering_system id="nano_vllm_cuTile_Inference_v7"&gt;</div>
+    </header>
+
+    <!-- 1. Metadata -->
+    <section>
+        <h2>&lt;metadata&gt;</h2>
+        <ul>
+            <li><strong>대상 하드웨어 (Target Hardware):</strong> NVIDIA RTX 5070 12GB (Single GPU / 48 SMs)</li>
+            <li><strong>연산 능력 (Compute Capability):</strong> 12.0 (Blackwell Architecture) / CC 9.0 (Hopper) Uniform Portability</li>
+            <li><strong>소프트웨어 스택 (Software Stack):</strong> CUDA Toolkit 13.3, CUDA Python 1.0, cuTile JIT DSL</li>
+            <li><strong>핵심 목표 (Core Objective):</strong> Build eager-serving, multi-user continuous batching LLM inference engine (micro-vllm).</li>
+        </ul>
+    </section>
+
+    <!-- 2. System Architecture Spaces -->
+    <section>
+        <h2>&lt;system_framework&gt;</h2>
+        
+        <div class="tag-info">&lt;design_space&gt;</div>
+        <div class="yaml-block">inference_phase: ["prefill", "decode"]
+fusion_policy: ["full_fusion", "attention_only"]
+kv_cache_mode: ["paged", "contiguous"]
+execution_mode: ["cuda_graph", "eager"]            # Eager serving is forced when cuTile JIT is active
+sm_partitioning: ["none", "green_contexts"]
+prefill_sm_ratio: [0.5, 0.67, 0.75]                # SM partitioning ratio (e.g. 32 SMs / 16 SMs split)</div>
+
+        <div class="tag-info" style="margin-top: 25px;">&lt;tuning_space&gt;</div>
+        <div class="yaml-block">prefill_tile_m: [64, 128]                          # Tile dimensions in FMHA prefill
+prefill_tile_n: [64, 128]
+decode_kv_block_size: [16, 32]                     # Block token count in Paged KV Cache
+decode_split_cta: [1, 2, 4]                        # Split-K dimension in FlashDecoding
+softmax_scheme: ["online", "naive"]
+accum_dtype: ["f32", "f16"]
+max_prompt_len: [512, 1024, 2048]
+max_seq_len: [1024, 2048, 4096]</div>
+    </section>
+
+    <!-- 3. Hardware Constraints -->
+    <section>
+        <h2>&lt;hardware_constraints&gt;</h2>
+        <ul>
+            <li><strong>&lt;limit id="Register_Limit"&gt;:</strong> 스레드당 물리 레지스터 개수 &lt;= 255 (초과 시 로컬 메모리 스필링 누수 발생)</li>
+            <li><strong>&lt;limit id="SRAM_Limit"&gt;:</strong> 스레드 블록당 Shared Memory 용량 &lt;= 100 KB</li>
+            <li><strong>&lt;limit id="VRAM_Limit"&gt;:</strong> RTX 5070 물리 메모리 한계 &lt;= 12.0 GB (Peak VRAM &lt;= 11.5 GB 권장)</li>
+        </ul>
+    </section>
+
+    <!-- 4. Knowledge Base -->
+    <section>
+        <h2>&lt;knowledge_rules&gt;</h2>
+        
+        <div class="rule-box">
+            <strong>&lt;rule id="Launch_Overhead_Warning"&gt;</strong>
+            <p><strong>Assert:</strong> if execution_mode == "eager" and kernel_launch_count &gt; (num_layers * 2): CPU launch latency dominates E2E time.</p>
+            <p><strong>Action:</strong> Apply 'CUDA Graph' for decode phase, or integrate all operations into a single 'Super Fusion' kernel to minimize launch count.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="Register_Pressure_Defense"&gt;</strong>
+            <p><strong>Assert:</strong> if prefill_tile_m == 128 or prefill_tile_n == 128: Register spilling triggers L1/VRAM overhead.</p>
+            <p><strong>Action:</strong> Force prefill_tile_m = 64 and prefill_tile_n = 64. Use online softmax to reduce intermediate register allocations.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="Decode_Attention_Routing"&gt;</strong>
+            <p><strong>Assert:</strong> if query_length == 1 (Decoding Phase): Using GEMM-based FMHA kernel causes SM Starvation and quadratic calculations.</p>
+            <p><strong>Action:</strong> Route to GEMV-based FlashDecoding. Dynamically set split_cta based on sequence length: seq_len &lt; 128 (split_cta=1), 128-512 (split_cta=2), 512+ (split_cta=4).</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="Allocator_Thrashing_Prevention"&gt;</strong>
+            <p><strong>Assert:</strong> if execution_mode == "eager" and use_dynamic_shape_padding == True: Frequent dynamic allocations thrash PyTorch Caching Allocator and trigger Python GC.</p>
+            <p><strong>Action:</strong> Avoid dynamic shape padding in Eager mode. Maintain eager unpadded shape allocation, or pre-allocate static shape buffers when using CUDA Graphs.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="SM_Partitioning_Rule"&gt;</strong>
+            <p><strong>Assert:</strong> if active_prefills &gt;= 1 and active_decodes &gt;= 1 and target_median_ITL_drop == True: Compute-heavy prefills starve latency-sensitive decodes.</p>
+            <p><strong>Action:</strong> Enable sm_partitioning="green_contexts" with ratio count (32 SM prefill / 16 SM decode) to secure L2 Cache residency for decode kernels.</p>
+        </div>
+    </section>
+
+    <!-- 5. Milestones & Code Primitives -->
+    <section>
+        <h2>&lt;milestones&gt;</h2>
+
+        <!-- Stage 1 -->
+        <div class="stage-box">
+            <h4>&lt;stage id="1_GEMM" complexity="Low"&gt;</h4>
+            <div class="stage-meta">Matrix Multiplication (MatMul) 최적화 단계</div>
+            <p><strong>병목 (Bottleneck):</strong> Shared memory bank conflicts and register occupancy limits.</p>
+            <p><strong>해결 (Solution):</strong> Implement tiled GEMM with cuTile, loading sub-matrices into shared memory.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code># cuTile Tiled MatMul Kernel Example
+@ct.kernel(occupancy=2)
+def gemm_kernel(A, B, C, TILE_M: ConstInt, TILE_N: ConstInt, TILE_K: ConstInt):
+    tx = ct.threadIdx(0)
+    ty = ct.threadIdx(1)
+    # Load blocks to Shared Memory and compute MMA
+    a_tile = ct.load(A, index=(ct.bid(0) * TILE_M, 0))
+    b_tile = ct.load(B, index=(0, ct.bid(1) * TILE_N))
+    acc = ct.mma(a_tile, b_tile)
+    ct.store(C, index=(ct.bid(0) * TILE_M, ct.bid(1) * TILE_N), tile=acc)</code></pre>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="stage-box">
+            <h4>&lt;stage id="2_FMHA" complexity="Medium"&gt;</h4>
+            <div class="stage-meta">Fused Multi-Head Attention (FMHA) 통합 설계 단계</div>
+            <p><strong>병목 (Bottleneck):</strong> Memory-bandwidth limit due to intermediate attention matrix write-back.</p>
+            <p><strong>해결 (Solution):</strong> Fuse attention computation by storing intermediate scores in register tiles; apply causal mask and scale online.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code># Online softmax and causal masking inside cuTile prefill loop
+for j in range(0, Tc):
+    k = ct.load(K, index=(batch_idx, off_kv_h, 0, j), shape=(1, 1, TILE_D, TILE_N)).reshape((TILE_D, TILE_N))
+    qk = ct.full((TILE_M, TILE_N), 0., dtype=np.float32)
+    qk = ct.mma(q, k, qk)
+    if CAUSAL and j >= mask_start:
+        offs_n = j * TILE_N + offs_n_tile
+        mask = ct.where(offs_m >= offs_n, 0.0, -np.inf)
+        qk += mask
+    # Online softmax reduction
+    m_ij = max(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
+    qk = qk * qk_scale - m_ij
+    p = ct.exp2(qk, flush_to_zero=True)
+    l_ij = ct.sum(p, axis=-1, keepdims=True)
+    alpha = ct.exp2(m_i - m_ij, flush_to_zero=True)
+    l_i = l_i * alpha + l_ij
+    acc = acc * alpha</code></pre>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="stage-box">
+            <h4>&lt;stage id="3_Single_User_LLM" complexity="High"&gt;</h4>
+            <div class="stage-meta">Single User LLM Inference (llm-from-scratch) 최적화 단계</div>
+            <p><strong>병목 (Bottleneck):</strong> High Python runtime launch overhead (ct.launch ctypes costs) in token-by-token decoding.</p>
+            <p><strong>해결 (Solution):</strong> Record and replay the decode execution path using CUDA Graphs with static pre-allocated memory buffers.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code># CUDA Graph Capture and Replay for Decode Loop
+static_input = torch.zeros(batch_size, dtype=torch.int64, device='cuda')
+static_kv_cache = torch.zeros(layers, batch_size, seq_len, head_dim, device='cuda')
+static_logits = torch.zeros(batch_size, vocab_size, device='cuda')
+
+# Warmup execution
+for _ in range(3):
+    outputs = model(static_input, static_kv_cache)
+
+# Capture into Graph
+g = torch.cuda.CUDAGraph()
+with torch.cuda.graph(g):
+    static_logits.copy_(model(static_input, static_kv_cache))
+
+# Generation loop replay
+for step in range(max_new_tokens):
+    static_input.copy_(next_token_tensor)
+    g.replay()
+    next_token_tensor.copy_(sample(static_logits))</code></pre>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="stage-box">
+            <h4>&lt;stage id="4_Micro_VLLM_Multi_User" complexity="Extreme"&gt;</h4>
+            <div class="stage-meta">Micro-VLLM Multi-User Serving (nano-vllm) 고도화 단계</div>
+            <p><strong>병목 (Bottleneck):</strong> Dynamic batch shapes and multi-tenant prefill-decode resource interference on consumer GPU.</p>
+            <p><strong>해결 (Solution):</strong> Integrate Paged KV Cache with GPU-vectorized logical-to-physical block mapping, and enforce CUDA Green Context hardware partitions.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code># 1. GPU-Vectorized Block Cache Reconstruction Layer
+idx_seq = torch.arange(seqlen_k, device=block_table.device)
+logical_blk = torch.div(idx_seq, block_size, rounding_mode='floor')
+offset = idx_seq % block_size
+physical_blk = block_table[b, logical_blk].long()
+k_4d[b, :, :seqlen_k, :] = k_cache[physical_blk, offset].transpose(0, 1)
+v_4d[b, :, :seqlen_k, :] = v_cache[physical_blk, offset].transpose(0, 1)
+
+# 2. CUDA Python 1.0 Green Contexts Partitioning (32 SM Prefill / 16 SM Decode)
+from cuda.core import Device, ContextOptions, SMResourceOptions
+dev = Device(0)
+sm = dev.resources.sm
+prefill_grp, decode_grp = sm.split(SMResourceOptions(count=(32, 16)))[0]
+ctx_prefill = dev.create_context(ContextOptions(resources=[prefill_grp]))
+ctx_decode = dev.create_context(ContextOptions(resources=[decode_grp]))
+
+# Scheduler Routing
+# with ctx_prefill if is_prefill else ctx_decode:
+#     launch_cutile_kernels()</code></pre>
+        </div>
+    </section>
+
+    <!-- 6. Evaluation Loop & Acceptance Criteria -->
+    <section>
+        <h2>&lt;agent_eval_loop&gt;</h2>
+        
+        <div class="tag-info">&lt;evaluation_step id="1_Stress_Test"&gt;</div>
+        <p><strong>Description:</strong> Launch concurrent client. Inject a heavy 4000-token prefill prompt while a 100-token decode client is generating.</p>
+        <p><strong>Command:</strong> <code>python bench_green.py --prefill_len 4000 --decode_len 100</code></p>
+
+        <div class="tag-info" style="margin-top: 25px;">&lt;acceptance_criteria&gt;</div>
+        <ul>
+            <li>
+                <strong>Metric [ITL_Latency]:</strong> Decode P50 ITL &lt; 45 ms (Green Context ON)
+                <br><span style="font-size: 0.85em; color: #555;">(Failure Action: Validate ctx_decode active stream bounds and check if other OS processes occupy the SMs.)</span>
+            </li>
+            <li>
+                <strong>Metric [Memory_Footprint]:</strong> Peak VRAM consumption &lt; 11.5 GB
+                <br><span style="font-size: 0.85em; color: #555;">(Failure Action: Reduce paged kv cache block size and scale down max_num_seqs.)</span>
+            </li>
+            <li>
+                <strong>Metric [System_Throughput]:</strong> E2E Servicing Throughput &gt; 450 tokens/sec
+                <br><span style="font-size: 0.85em; color: #555;">(Failure Action: Inspect PyTorch Caching Allocator status. Enforce eager unpadded shapes to stop gc thrashing.)</span>
+            </li>
+        </ul>
+    </section>
+
+</div>
+
+</body>
+</html>

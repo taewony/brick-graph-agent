@@ -1,0 +1,10 @@
+{
+  "name": "brick-graph-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workspace package for markdown-to-PDF conversion tooling",
+  "dependencies": {
+    "markdown-it": "^15.0.0",
+    "pdfkit": "^0.20.1"
+  }
+}

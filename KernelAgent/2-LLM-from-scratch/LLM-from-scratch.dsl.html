@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-from-scratch.dsl.html - E2E LLM 최적화 시스템 명세</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #2c3e50;
+            --primary-color: #1a237e;
+            --secondary-color: #1565c0;
+            --border-color: #cfd8dc;
+            --code-bg: #1e1e1e;
+            --code-text: #abb2bf;
+            --xml-tag-color: #e06c75;
+            --xml-attr-color: #d19a66;
+            --xml-comment-color: #5c6370;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            line-height: 1.7;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            font-size: 1.8em;
+        }
+
+        .xml-root-label {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: var(--xml-tag-color);
+            background-color: #e8eaf6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: #fafbfc;
+        }
+
+        section h2 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            font-size: 1.3em;
+            font-family: monospace;
+        }
+
+        h3 {
+            color: #37474f;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .tag-info {
+            font-family: monospace;
+            color: var(--xml-tag-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        ul, ol {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 15px 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid #282c34;
+            margin: 15px 0;
+        }
+
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #eceff1;
+            color: #c2185b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 1em;
+        }
+
+        .yaml-block {
+            background-color: #f1f3f5;
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.92em;
+            border-radius: 0 4px 4px 0;
+            margin: 15px 0;
+        }
+
+        .stage-box {
+            border: 1px solid #c5cae9;
+            background-color: #e8eaf6;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .stage-box h4 {
+            margin: 0 0 10px 0;
+            color: #1a237e;
+            font-size: 1.1em;
+        }
+
+        .stage-meta {
+            font-size: 0.85em;
+            color: #555;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #c5cae9;
+            padding-bottom: 5px;
+        }
+
+        .rule-box {
+            border-left: 4px solid #ffb300;
+            background-color: #fffde7;
+            padding: 12px 18px;
+            margin-bottom: 15px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .rule-box strong {
+            color: #ff6f00;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>LLM-from-scratch.dsl.html - E2E LLM 최적화 시스템 명세</h1>
+        <div class="xml-root-label">&lt;kernel_engineering_system id="cutile_llm_from_scratch_rtx5070"&gt;</div>
+    </header>
+
+    <!-- 1. Metadata -->
+    <section>
+        <h2>&lt;metadata&gt;</h2>
+        <ul>
+            <li><strong>대상 하드웨어 (Target Hardware):</strong> NVIDIA GeForce RTX 5070 (Blackwell SM120, 48 SMs, 48.0 MB L2 Cache)</li>
+            <li><strong>대상 모델 (Target Model):</strong> 6-layer, 6-head GPT-2 (embedding dim 384, hidden dim 1536)</li>
+            <li><strong>최적화 대상 (Core Objective):</strong> Windows 환경에서 정적 KV 캐시 및 CUDA Graphs 기술을 결합하여 E2E LLM 추론(Decoding)의 파이프라인 런치 오버헤드를 배제하고 성능을 극대화.</li>
+            <li><strong>지식 작성 (Tech Lead):</strong> AI Agent &amp; Architect Collaboration</li>
+        </ul>
+    </section>
+
+    <!-- 2. System Architecture Spaces -->
+    <section>
+        <h2>&lt;system_framework&gt;</h2>
+        
+        <div class="tag-info">&lt;design_space&gt;</div>
+        <div class="yaml-block">kv_cache_policy: ["dynamic_concat", "static_preallocated"]
+execution_mode: ["eager", "cuda_graph"]
+ffn_backend: ["pytorch_cublas", "cutile_fused"]</div>
+
+        <div class="tag-info" style="margin-top: 25px;">&lt;tuning_space&gt;</div>
+        <div class="yaml-block">max_prompt_len: [112]
+max_seq_len: [240]
+tile_size: [64]
+vocab_size: [65]                                  # Shakespeare character-level vocabulary
+embed_dim: [384]
+num_layers: [6]</div>
+    </section>
+
+    <!-- 3. Hardware Constraints -->
+    <section>
+        <h2>&lt;hardware_constraints&gt;</h2>
+        <ul>
+            <li><strong>&lt;limit id="Register_Limit"&gt;:</strong> 스레드당 물리 레지스터 개수 &lt;= 255 (초과 시 Register Spilling 발생)</li>
+            <li><strong>&lt;limit id="VRAM_Limit"&gt;:</strong> RTX 5070 VRAM 크기 = 12 GB</li>
+            <li><strong>&lt;limit id="Host_Launch_Overhead_Limit"&gt;:</strong> CPU-to-GPU 론칭 지연 임계치 = ~2-3 ms per token (소규모 추론 시 CPU 오버헤드가 전체 추론 시간을 지배함)</li>
+        </ul>
+    </section>
+
+    <!-- 4. Knowledge Base -->
+    <section>
+        <h2>&lt;knowledge_rules&gt;</h2>
+        
+        <div class="rule-box">
+            <strong>&lt;rule id="Eager_Dispatch_Latency_Eradication"&gt;</strong>
+            <p><strong>Assert:</strong> if execution_mode == "eager": Launching dozens of small PyTorch/cuTile operators in every layer at every step generates significant host dispatch latency (~2-3 ms per token).</p>
+            <p><strong>Action:</strong> Capture the entire decode forward pass (attention kernel, projections, LayerNorm, cache scatter) into a static CUDAGraph. Replay via graph.replay() to achieve up to 5.28x speedup.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="Static_KV_Cache_Enforcement"&gt;</strong>
+            <p><strong>Assert:</strong> if kv_cache_policy == "dynamic_concat" (using torch.cat): Resizing KV cache at each step triggers GPU memory reallocation, fragmentation, and CUDA synchronization.</p>
+            <p><strong>Action:</strong> Pre-allocate a contiguous static GPU cache buffer [Batch, Heads, MaxSeqLen, HeadDim] on startup. Update using in-place scatter_ operator with a pre-allocated index tensor to support Graph Capture compatibility.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="Zero_SDPA_Fallback_Causal_Padding"&gt;</strong>
+            <p><strong>Assert:</strong> if sequence_length &lt; 64 during prefill: Block/tile boundary mismatch in cuTile FMHA kernel triggers fallback to PyTorch native SDPA.</p>
+            <p><strong>Action:</strong> Apply causal padding to Q, K, and V along the sequence dimension up to 64. Since the attention is causal, future slots (&gt;= seq_len) are completely masked out. Slice the final output tensor back to the original sequence length.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="FFN_Linear_Library_Optimal"&gt;</strong>
+            <p><strong>Assert:</strong> if ffn_backend == "cutile_fused": Custom fused FFN kernels struggle to match cuBLAS/CUTLASS assembly-level Tensor Core optimization for standard GEMM shapes.</p>
+            <p><strong>Action:</strong> Maintain PyTorch's native nn.Linear (which calls cuBLAS) for the FFN block. Since CUDA Graph already eliminates operator dispatch overheads, custom MLP fusion is redundant.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="TTFT_Cache_Clear_Optimization"&gt;</strong>
+            <p><strong>Assert:</strong> if execution_mode == "cuda_graph" and TTFT_latency_spike == True: Resetting the pre-allocated cache via eager fill_(0.0) launches and post-hoc copy loops degrades prefill latency by ~1.2ms.</p>
+            <p><strong>Action:</strong> Eliminate fill_(0.0) operations (stale future slots are naturally masked out by causal mask). Modify the prefill attention forward pass to write K/V projections directly into the static cache slices in-place.</p>
+        </div>
+    </section>
+
+    <!-- 5. Milestones & Code Primitives -->
+    <section>
+        <h2>&lt;milestones&gt;</h2>
+
+        <!-- Stage 1: cuTile Attention (Raw) -->
+        <div class="stage-box">
+            <h4>&lt;stage id="1_cuTile_Attention_Raw" complexity="Medium"&gt;</h4>
+            <div class="stage-meta">Dynamic KV Cache를 이용한 Eager cuTile 연산 단계</div>
+            <p><strong>병목 (Bottleneck):</strong> 런타임 JIT 컴파일러 룩업 및 PyTorch C++ Dispatch 계층의 론칭 오버헤드.</p>
+            <p><strong>해결 (Solution):</strong> Causal padding을 적용하여 PyTorch SDPA 폴백을 배제하고 cuTile FMHA 커널 직접 기동.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code># Causal padding for sequence lengths not divisible by 64
+if T &lt; 64:
+    pad_len = 64 - T
+    q = F.pad(q, (0, 0, 0, pad_len))
+    k = F.pad(k, (0, 0, 0, pad_len))
+    v = F.pad(v, (0, 0, 0, pad_len))
+    
+# Launch cuTile FMHA
+out = cutile_fmha_prefill(q, k, v, scale, causal=True)
+
+# Slice back to original length
+if T &lt; 64:
+    out = out[:, :, :T, :]</code></pre>
+        </div>
+
+        <!-- Stage 2: cuTile + CUDA Graphs -->
+        <div class="stage-box">
+            <h4>&lt;stage id="2_cuTile_CUDA_Graphs" complexity="Extreme"&gt;</h4>
+            <div class="stage-meta">Static KV 캐시, CUDAGraph Capture, 그리고 TTFT 최적화 결합 단계</div>
+            <p><strong>병목 (Bottleneck):</strong> 매 토큰 생성 시 파이썬 API/ctypes 드라이버 오버헤드와 KV 캐시 재할당 지연.</p>
+            <p><strong>해결 (Solution):</strong> 정적 메모리 버퍼 생성 및 CUDA Graph 캡처 구축, TTFT를 단축하는 direct-writing 최적화 적용.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code># 1. In-place Static KV Cache update using scatter_
+self.static_k[layer_idx].scatter_(2, self.static_scatter_index, new_k)
+self.static_v[layer_idx].scatter_(2, self.static_scatter_index, new_v)
+
+# 2. CUDA Graph Capture
+g = torch.cuda.CUDAGraph()
+# Warmup before capture
+for _ in range(3):
+    static_logits = model(static_input, static_kv_cache)
+# Record
+with torch.cuda.graph(g):
+    static_logits = model(static_input, static_kv_cache)
+
+# 3. Direct Prefill Cache Writing (TTFT optimization)
+# Pass static_kv buffer directly to the prefill phase forward pass
+def forward(self, x, static_kv=None, step_idx=None):
+    q, k, v = self.qkv_projection(x)
+    if static_kv is not None:
+        # Direct write to buffer slice
+        static_kv[0].copy_(k)
+        static_kv[1].copy_(v)</code></pre>
+        </div>
+    </section>
+
+    <!-- 6. Evaluation Loop & Acceptance Criteria -->
+    <section>
+        <h2>&lt;agent_eval_loop&gt;</h2>
+        
+        <div class="tag-info">&lt;evaluation_step id="E2E_LLM_Benchmark"&gt;</div>
+        <p><strong>Description:</strong> cuTile + CUDAGraph 기반 GPT-2 모델 E2E 추론 성능 벤치마크 검증</p>
+        <p><strong>Command:</strong> <code>python test_gpt.py --use-cutile --use-graph</code></p>
+
+        <div class="tag-info" style="margin-top: 25px;">&lt;acceptance_criteria&gt;</div>
+        <ul>
+            <li>
+                <strong>Metric [Accuracy_Parity]:</strong> 100% token-by-token 정합성 검증
+                <br>PyTorch Native vs cuTile (Graph) 출력 결과물 일치 여부
+            </li>
+            <li>
+                <strong>Metric [TTFT_Latency]:</strong> First Token 출력 지연시간 (Prefill)
+                <br><code>&lt; 3.0 ms</code> 달성 여부 (실측 2.50 ms 달성 완료)
+            </li>
+            <li>
+                <strong>Metric [Decoding_Throughput]:</strong> 토큰 생성 속도 (Decode)
+                <br><code>&gt; 3500 tokens/sec</code> 달성 여부 (실측 3701.09 t/s 달성 완료, PyTorch 대비 5.28배 Speedup)
+            </li>
+        </ul>
+    </section>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>matmul.dsl.html - MatMul 최적화 시스템 명세</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #2c3e50;
+            --primary-color: #2e7d32;
+            --secondary-color: #1565c0;
+            --border-color: #cfd8dc;
+            --code-bg: #1e1e1e;
+            --code-text: #abb2bf;
+            --xml-tag-color: #e06c75;
+            --xml-attr-color: #d19a66;
+            --xml-comment-color: #5c6370;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            line-height: 1.7;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            font-size: 1.8em;
+        }
+
+        .xml-root-label {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: var(--xml-tag-color);
+            background-color: #e8f5e9;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: #fafbfc;
+        }
+
+        section h2 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            font-size: 1.3em;
+            font-family: monospace;
+        }
+
+        h3 {
+            color: #37474f;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .tag-info {
+            font-family: monospace;
+            color: var(--xml-tag-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        ul, ol {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 15px 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid #282c34;
+            margin: 15px 0;
+        }
+
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #eceff1;
+            color: #c2185b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 1em;
+        }
+
+        .yaml-block {
+            background-color: #f1f3f5;
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.92em;
+            border-radius: 0 4px 4px 0;
+            margin: 15px 0;
+        }
+
+        .stage-box {
+            border: 1px solid #b2dfdb;
+            background-color: #e0f2f1;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .stage-box h4 {
+            margin: 0 0 10px 0;
+            color: #004d40;
+            font-size: 1.1em;
+        }
+
+        .stage-meta {
+            font-size: 0.85em;
+            color: #555;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #b2dfdb;
+            padding-bottom: 5px;
+        }
+
+        .rule-box {
+            border-left: 4px solid #ffb300;
+            background-color: #fffde7;
+            padding: 12px 18px;
+            margin-bottom: 15px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .rule-box strong {
+            color: #ff6f00;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>matmul.dsl.html - MatMul 최적화 시스템 명세</h1>
+        <div class="xml-root-label">&lt;kernel_engineering_system id="cutile_matmul_rtx5070"&gt;</div>
+    </header>
+
+    <!-- 1. Metadata -->
+    <section>
+        <h2>&lt;metadata&gt;</h2>
+        <ul>
+            <li><strong>대상 하드웨어 (Target Hardware):</strong> NVIDIA GeForce RTX 5070 (Blackwell SM100/101, 48 SMs, 48.0 MB L2 Cache)</li>
+            <li><strong>최적화 대상 (Core Objective):</strong> 최적화된 persistent 스케줄링 및 L2 cache swizzling을 적용한 행렬곱(GEMM) 커널 설계.</li>
+            <li><strong>평가일 (Date):</strong> June 17, 2026</li>
+            <li><strong>지식 작성 (Tech Lead):</strong> AI Agent &amp; Architect Collaboration</li>
+        </ul>
+    </section>
+
+    <!-- 2. System Architecture Spaces -->
+    <section>
+        <h2>&lt;system_framework&gt;</h2>
+        
+        <div class="tag-info">&lt;design_space&gt;</div>
+        <div class="yaml-block">scheduling_policy: ["standard_grid", "persistent_cta"]
+swizzling_policy: ["naive", "grouped_l2_swizzle"]
+computational_precision: ["fp16_tensor_core"]</div>
+
+        <div class="tag-info" style="margin-top: 25px;">&lt;tuning_space&gt;</div>
+        <div class="yaml-block">num_ctas: [48, 192]                              # 48(SM당 1블록) vs 192(SM당 4블록)
+group_size_m: [4, 8]                              # L2 Cache 데이터 재사용 그룹 크기
+tile_size_m: [64]
+tile_size_n: [64]
+tile_size_k: [64]</div>
+    </section>
+
+    <!-- 3. Hardware Constraints -->
+    <section>
+        <h2>&lt;hardware_constraints&gt;</h2>
+        <ul>
+            <li><strong>&lt;limit id="L2_Cache_Size"&gt;:</strong> RTX 5070 물리 L2 Cache 용량 = 48.0 MB</li>
+            <li><strong>&lt;limit id="SM_Count"&gt;:</strong> Streaming Multiprocessor(SM) 총 개수 = 48개</li>
+            <li><strong>&lt;limit id="Shared_Memory_Limit"&gt;:</strong> SM당 최대 공유 메모리 = 100 KB (64x64 타일 기준 블록당 16 KB 요구되므로 SM당 최대 6개 블록 상주 가능)</li>
+        </ul>
+    </section>
+
+    <!-- 4. Knowledge Base -->
+    <section>
+        <h2>&lt;knowledge_rules&gt;</h2>
+        
+        <div class="rule-box">
+            <strong>&lt;rule id="SM_Under_Occupancy_Alert"&gt;</strong>
+            <p><strong>Assert:</strong> if scheduling_policy == "persistent_cta" and num_ctas == 48: SM Pipeline Stalls occur during global memory loads.</p>
+            <p><strong>Action:</strong> Increase num_ctas to 192 (4 blocks per SM). This allows the hardware warp scheduler to switch to other active warps and hide global memory latency.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="L2_Cache_Swizzling_Tuning"&gt;</strong>
+            <p><strong>Assert:</strong> if swizzling_policy == "grouped_l2_swizzle" and group_size_m == 4: Sub-optimal cache reuse on large L2 cache of Blackwell GPU.</p>
+            <p><strong>Action:</strong> Set group_size_m = 8 to exploit the 48.0 MB L2 Cache residency, maximizing consecutive CTA block loads of B matrix tiles.</p>
+        </div>
+
+        <div class="rule-box">
+            <strong>&lt;rule id="Boundary_Padded_Index_Calculation"&gt;</strong>
+            <p><strong>Assert:</strong> if swizzling_policy == "grouped_l2_swizzle" and total_tiles != (num_groups * group_size_m * num_bid_n): Non-divisible matrix shapes trigger memory boundary bugs and incorrect calculations.</p>
+            <p><strong>Action:</strong> Calculate total_tiles using group padding logic: total_tiles = num_groups * GROUP_SIZE_M * NUM_BID_N. Inside the kernel, add boundary check "if bid_m >= NUM_BID_M or bid_n >= NUM_BID_N: continue" to ensure correctness.</p>
+        </div>
+    </section>
+
+    <!-- 5. Milestones & Code Primitives -->
+    <section>
+        <h2>&lt;milestones&gt;</h2>
+
+        <!-- Stage 1: matmul_sample -->
+        <div class="stage-box">
+            <h4>&lt;stage id="1_matmul_sample" complexity="Low"&gt;</h4>
+            <div class="stage-meta">표준 그리드 맵핑 방식의 기본 cuTile 커널</div>
+            <p><strong>특징:</strong> Grid size를 필요한 블록 수와 1대1 매핑하여 호출. 스케줄링이 단순하지만 런치 오버헤드와 L2 캐시 지역성을 제어하지 못함.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code>@ct.kernel
+def matmul_sample(A, B, C, NUM_BID_M: int, NUM_BID_N: int, NUM_K_TILES: int):
+    # Standard grid mapping using bid(0) for m and bid(1) for n
+    bid_m = ct.bid(0)
+    bid_n = ct.bid(1)
+
+    acc = ct.zeros((64, 64), dtype=ct.float32)
+
+    for k in range(NUM_K_TILES):
+        tile_A = ct.load(A, index=(bid_m, k), shape=(64, 64))
+        tile_B = ct.load(B, index=(k, bid_n), shape=(64, 64))
+
+        tile_A = ct.astype(tile_A, ct.float16)
+        tile_B = ct.astype(tile_B, ct.float16)
+
+        acc = ct.mma(tile_A, tile_B, acc=acc)
+
+    ct.store(C, index=(bid_m, bid_n), tile=ct.astype(acc, C.dtype))</code></pre>
+        </div>
+
+        <!-- Stage 2: matmul_tilegym -->
+        <div class="stage-box">
+            <h4>&lt;stage id="2_matmul_tilegym" complexity="High"&gt;</h4>
+            <div class="stage-meta">고정 persistent grid 스케줄링 및 L2 Cache Swizzling이 적용된 최적화 커널</div>
+            <p><strong>특징:</strong> num_ctas=192 고정 그리드 가동. 그룹 스위즐링을 통해 B 행렬 로드 시 L2 캐시 재사용성을 극대화하고 경계 버그 방어 수식을 통합.</p>
+            <div class="tag-info">&lt;code_primitive lang="python"&gt;</div>
+            <pre><code>@ct.kernel
+def matmul_tilegym(A, B, C, NUM_BID_M: int, NUM_BID_N: int, NUM_K_TILES: int, GROUP_SIZE_M: int):
+    # Persistent Thread Scheduling
+    start_tile_id = ct.bid(0)
+    num_programs = ct.num_blocks(0)
+    num_groups = (NUM_BID_M + GROUP_SIZE_M - 1) // GROUP_SIZE_M
+    total_tiles = num_groups * GROUP_SIZE_M * NUM_BID_N
+
+    for tile_id in range(start_tile_id, total_tiles, num_programs):
+        # Grouped L2 Cache Swizzling (M-fast, N-slow layout)
+        tiles_per_group_strip = GROUP_SIZE_M * NUM_BID_N
+        group_id = tile_id // tiles_per_group_strip
+        group_offset = tile_id % tiles_per_group_strip
+        
+        bid_n_inner = group_offset // GROUP_SIZE_M
+        bid_m_inner = group_offset % GROUP_SIZE_M
+        
+        bid_m = group_id * GROUP_SIZE_M + bid_m_inner
+        bid_n = bid_n_inner
+
+        if bid_m >= NUM_BID_M or bid_n >= NUM_BID_N:
+            continue
+
+        acc = ct.zeros((64, 64), dtype=ct.float32)
+
+        for k in range(NUM_K_TILES):
+            tile_A = ct.load(A, index=(bid_m, k), shape=(64, 64))
+            tile_B = ct.load(B, index=(k, bid_n), shape=(64, 64))
+
+            tile_A = ct.astype(tile_A, ct.float16)
+            tile_B = ct.astype(tile_B, ct.float16)
+
+            acc = ct.mma(tile_A, tile_B, acc=acc)
+
+        ct.store(C, index=(bid_m, bid_n), tile=ct.astype(acc, C.dtype))</code></pre>
+        </div>
+    </section>
+
+    <!-- 6. Evaluation Loop & Acceptance Criteria -->
+    <section>
+        <h2>&lt;agent_eval_loop&gt;</h2>
+        
+        <div class="tag-info">&lt;evaluation_step id="GEMM_Benchmark"&gt;</div>
+        <p><strong>Description:</strong> cuTile MatMul 성능 및 수치 정확성 검증 벤치마크 실행</p>
+        <p><strong>Command:</strong> <code>python compare_matmul.py --num_ctas 192 --group_size 8</code></p>
+
+        <div class="tag-info" style="margin-top: 25px;">&lt;acceptance_criteria&gt;</div>
+        <ul>
+            <li>
+                <strong>Metric [Numerical_Correctness]:</strong> FP16 오차 범위 검증 합격
+                <br><code>atol &lt;= 2e-1, rtol &lt;= 2e-2</code> 통과 여부
+            </li>
+            <li>
+                <strong>Metric [Small_Scale_Speedup]:</strong> $256 \times 256$ 크기에서 PyTorch 대비 성능 우위
+                <br>Throughput 배수 <code>&gt;= 1.50x Speedup</code> 달성 (실측 1.79x 달성 완료)
+            </li>
+            <li>
+                <strong>Metric [Large_Scale_Saturation]:</strong> $4096 \times 4096$ 크기에서 cuBLAS 대비 성능 효율 보증
+                <br>TFLOPS 달성 비율 <code>&gt;= 90.0% of PyTorch</code> (실측 91.0% 달성 완료)
+            </li>
+        </ul>
+    </section>
+
+</div>
+
+</body>
+</html>
