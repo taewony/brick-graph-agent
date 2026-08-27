@@ -386,6 +386,11 @@ def cutile_fmha_prefill(
             block_table=block_table,
         )
 
+    if use_paged_prefill:
+        block_size = k_cache.shape[1]
+        if block_size % tile_n != 0:
+            tile_n = block_size
+
     cu_q = cu_seqlens_q.tolist()
     cu_k = cu_seqlens_k.tolist()
     for b in range(batch_size):
@@ -404,21 +409,15 @@ def cutile_fmha_prefill(
         grid = _launch_grid(seqlen_q, num_heads, tile_m)
 
         if use_paged_prefill:
-            # Prefix-cache prefill: materialize K/V from the paged cache via correct
-            # PyTorch advanced indexing, then run the VERIFIED non-paged FMHA kernel
-            # with the per-batch prefix offset (Q_START_IN_K). This replaces the
-            # numerically-buggy fmha_prefill_paged_kernel (multi-tile mismatch).
-            block_size = k_cache.shape[1]
-            idx_seq = torch.arange(seqlen_k, device=block_table.device)
-            logical_blk = torch.div(idx_seq, block_size, rounding_mode="floor")
-            offset = idx_seq % block_size
-            physical_blk = block_table[b, logical_blk].long()
-            k_view = k_cache[physical_blk, offset].transpose(0, 1).unsqueeze(0).contiguous()
-            v_view = v_cache[physical_blk, offset].transpose(0, 1).unsqueeze(0).contiguous()
-            ct.launch(stream, grid, fmha_prefill_kernel, (
-                q_view, k_view, v_view, out_view,
-                scale, head_dim, num_heads,
-                tile_m, tile_n, query_group_size, causal, q_start_in_k,
+            # Paged prefill: read K/V directly from the block table without
+            # materializing a contiguous cache. The kernel's bottom-right causal
+            # mask (Q_START_IN_K + offs_m >= offs_n) is correct; the earlier
+            # "bug" was the test golden reference using top-left is_causal=True.
+            block_table_view = block_table.narrow(0, b, 1)
+            ct.launch(stream, grid, fmha_prefill_paged_kernel, (
+                q_view, k_cache, v_cache, block_table_view, out_view,
+                scale, seqlen_k, q_start_in_k,
+                head_dim, num_heads, tile_m, tile_n, query_group_size, k_cache.shape[1], causal,
             ))
         else:
             k_view = _bhtd_view(k, start_k, seqlen_k)
