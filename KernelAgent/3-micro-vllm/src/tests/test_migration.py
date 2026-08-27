@@ -258,6 +258,7 @@ def test_cutile_prefill_attention_gpu():
             end_q = cu_seqlens_q_pc[b+1].item()
             start_k = cu_seqlens_k_pc[b].item()
             end_k = cu_seqlens_k_pc[b+1].item()
+            seqlen_q = end_q - start_q
             seqlen_k = end_k - start_k
             
             qb = q_pc[start_q:end_q].transpose(0, 1).unsqueeze(0) # (1, H, seqlen_q, D)
@@ -270,7 +271,15 @@ def test_cutile_prefill_attention_gpu():
                 kb[0, :, i, :] = k_cache_pc[physical_blk, offset, :, :]
                 vb[0, :, i, :] = v_cache_pc[physical_blk, offset, :, :]
                 
-            ob = torch.nn.functional.scaled_dot_product_attention(qb, kb, vb, is_causal=True)
+            # 프리픽스 캐시는 bottom-right 인과 마스크(q_i attends k_j iff j <= i + (seqlen_k - seqlen_q)).
+            # PyTorch is_causal=True는 q_len != k_len일 때 top-left(j <= i)라서 프리픽스 오프셋을 무시하므로,
+            # 명시적 float 마스크(0 = attend, -inf = masked)로 대체한다.
+            q_idx = torch.arange(seqlen_q, device="cuda")[:, None].float()
+            k_idx = torch.arange(seqlen_k, device="cuda")[None, :].float()
+            attn_mask = torch.where(k_idx <= q_idx + (seqlen_k - seqlen_q), 0.0, float("-inf"))
+            ob = torch.nn.functional.scaled_dot_product_attention(
+                qb, kb, vb, attn_mask=attn_mask, is_causal=False
+            )
             o_refs_pc.append(ob.squeeze(0).transpose(0, 1))
         o_ref_pc = torch.cat(o_refs_pc, dim=0)
         
