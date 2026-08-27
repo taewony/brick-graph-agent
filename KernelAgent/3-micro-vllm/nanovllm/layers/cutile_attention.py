@@ -77,7 +77,7 @@ if HAS_CUTILE:
                 mask = ct.where(Q_START_IN_K + offs_m >= offs_n, 0.0, -np.inf)
                 qk += mask
 
-            m_ij = max(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
+            m_ij = ct.maximum(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
             qk = qk * qk_scale - m_ij
 
             p = ct.exp2(qk, flush_to_zero=True)
@@ -173,7 +173,7 @@ if HAS_CUTILE:
                 mask = ct.where(Q_START_IN_K + offs_m >= offs_n, 0.0, -np.inf)
                 qk += mask
 
-            m_ij = max(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
+            m_ij = ct.maximum(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
             qk = qk * qk_scale - m_ij
 
             p = ct.exp2(qk, flush_to_zero=True)
@@ -244,7 +244,7 @@ if HAS_CUTILE:
                 mask = ct.where(offs_n < cur_len, 0.0, -np.inf)
                 qk += mask
 
-            m_ij = max(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
+            m_ij = ct.maximum(m_i, ct.max(qk, axis=-1, keepdims=True) * qk_scale)
             qk = qk * qk_scale - m_ij
 
             p = ct.exp2(qk, flush_to_zero=True)
