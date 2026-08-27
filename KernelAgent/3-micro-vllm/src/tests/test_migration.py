@@ -277,6 +277,8 @@ def test_cutile_prefill_attention_gpu():
             q_idx = torch.arange(seqlen_q, device="cuda")[:, None].float()
             k_idx = torch.arange(seqlen_k, device="cuda")[None, :].float()
             attn_mask = torch.where(k_idx <= q_idx + (seqlen_k - seqlen_q), 0.0, float("-inf"))
+            # SDPA의 flash backend는 float 마스크(attn bias) dtype이 query dtype과 일치해야 함.
+            attn_mask = attn_mask.to(qb.dtype)
             ob = torch.nn.functional.scaled_dot_product_attention(
                 qb, kb, vb, attn_mask=attn_mask, is_causal=False
             )
