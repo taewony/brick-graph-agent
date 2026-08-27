@@ -10,6 +10,13 @@ def main():
     parser.add_argument("--enforce-eager", action="store_true", help="Disable CUDA Graph replay")
     parser.add_argument("--cutile-cudagraph", action="store_true", help="Opt into cuTile CUDA Graph decode replay")
     parser.add_argument("--cutile-prefill-strategy", choices=["hybrid", "direct", "padded"], default="hybrid", help="cuTile prefill strategy for target-PC comparisons")
+    parser.add_argument("--num-seqs", type=int, default=256, help="Number of concurrent requests")
+    parser.add_argument("--max-input-len", type=int, default=1024, help="Maximum input prompt length (tokens)")
+    parser.add_argument("--max-output-len", type=int, default=1024, help="Maximum output length (tokens)")
+    parser.add_argument("--seed", type=int, default=0, help="Random seed")
+    parser.add_argument("--model-path", default=os.path.expanduser("~/huggingface/Qwen3-0.6B/"), help="Model path")
+    parser.add_argument("--max-model-len", type=int, default=4096, help="Max model length")
+    parser.add_argument("--graph-mode", choices=["persistent", "copy"], default="persistent", help="CUDA Graph buffer mode (Tier 3a A/B: persistent=신, copy=구)")
     args = parser.parse_args()
 
     if args.use_cutile:
@@ -24,16 +31,19 @@ def main():
     else:
         print("⚡ Using default (FlashAttention) backend")
 
+    os.environ["NANO_VLLM_GRAPH_MODE"] = args.graph_mode
+    print(f"CUDA Graph buffer mode: {args.graph_mode}")
+
     from nanovllm import LLM, SamplingParams
 
-    seed(0)
-    num_seqs = 256
-    max_input_len = 1024
-    max_ouput_len = 1024
+    seed(args.seed)
+    num_seqs = args.num_seqs
+    max_input_len = args.max_input_len
+    max_ouput_len = args.max_output_len
 
-    path = os.path.expanduser("~/huggingface/Qwen3-0.6B/")
+    path = args.model_path
     enforce_eager = args.enforce_eager or (args.use_cutile and not args.cutile_cudagraph)
-    llm = LLM(path, enforce_eager=enforce_eager, max_model_len=4096)
+    llm = LLM(path, enforce_eager=enforce_eager, max_model_len=args.max_model_len)
 
     prompt_token_ids = [[randint(0, 10000) for _ in range(randint(100, max_input_len))] for _ in range(num_seqs)]
     sampling_params = [SamplingParams(temperature=0.6, ignore_eos=True, max_tokens=randint(100, max_ouput_len)) for _ in range(num_seqs)]
@@ -70,6 +80,28 @@ def main():
     total_tokens = sum(sp.max_tokens for sp in sampling_params)
     throughput = total_tokens / t
     print(f"Total: {total_tokens}tok, Time: {t:.2f}s, Throughput: {throughput:.2f}tok/s")
+
+    import json
+    result = {
+        "type": "throughput_result",
+        "total_tokens": total_tokens,
+        "time_s": round(t, 4),
+        "throughput_tok_s": round(throughput, 4),
+        "conditions": {
+            "use_cutile": args.use_cutile,
+            "cutile_prefill_strategy": args.cutile_prefill_strategy,
+            "cutile_cudagraph": args.cutile_cudagraph,
+            "enforce_eager": enforce_eager,
+            "num_seqs": num_seqs,
+            "max_input_len": max_input_len,
+            "max_output_len": max_ouput_len,
+            "seed": args.seed,
+            "model_path": path,
+            "max_model_len": args.max_model_len,
+            "graph_mode": args.graph_mode,
+        },
+    }
+    print("RESULT_JSON:" + json.dumps(result))
 
 
 if __name__ == "__main__":

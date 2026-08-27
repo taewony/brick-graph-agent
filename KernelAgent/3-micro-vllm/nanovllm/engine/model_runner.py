@@ -21,6 +21,9 @@ class ModelRunner:
         import os
         use_cutile = (os.environ.get("NANO_VLLM_USE_CUTILE", "0") == "1")
         self.use_cutile = use_cutile
+        self.graph_mode = os.environ.get("NANO_VLLM_GRAPH_MODE", "persistent").lower()
+        if self.graph_mode not in {"persistent", "copy"}:
+            self.graph_mode = "persistent"
         self.enforce_eager = config.enforce_eager
         self.cuda_graphs_enabled = False
         self.world_size = config.tensor_parallel_size
@@ -205,6 +208,18 @@ class ModelRunner:
         self._buf_context_lens  = torch.empty(config.max_num_seqs, dtype=torch.int32, device="cuda")
         self._buf_block_tables  = torch.empty(config.max_num_seqs, self._max_num_blocks, dtype=torch.int32, device="cuda")
         self._buf_temperatures  = torch.empty(config.max_num_seqs, dtype=torch.float32, device="cuda")
+        self._buf_outputs       = torch.empty(config.max_num_seqs, config.hf_config.hidden_size, dtype=config.hf_config.torch_dtype, device="cuda")
+        # Initialize to safe values (token 0, slot -1, context 0, block -1) so warmup /
+        # CUDA-graph capture in "persistent" mode never reads uninitialized memory.
+        self._buf_input_ids.zero_()
+        self._buf_positions.zero_()
+        self._buf_slot_mapping.fill_(-1)
+        self._buf_cu_seqlens_q.zero_()
+        self._buf_cu_seqlens_k.zero_()
+        self._buf_context_lens.zero_()
+        self._buf_block_tables.fill_(-1)
+        self._buf_temperatures.zero_()
+        self._buf_outputs.zero_()
 
     def _h2d(self, dst: torch.Tensor, values: list, dtype) -> torch.Tensor:
         """Copy a Python list into a preallocated CUDA buffer slice (no per-step allocation)."""
@@ -285,18 +300,29 @@ class ModelRunner:
             return self.model.compute_logits(self.model(input_ids, positions))
         else:
             bs = input_ids.size(0)
-            context = get_context()
-            graph = self.graphs[next(x for x in self.graph_bs if x >= bs)]
-            graph_vars = self.graph_vars
-            graph_vars["input_ids"][:bs] = input_ids
-            graph_vars["positions"][:bs] = positions
-            graph_vars["slot_mapping"].fill_(-1)
-            graph_vars["slot_mapping"][:bs] = context.slot_mapping
-            graph_vars["context_lens"].zero_()
-            graph_vars["context_lens"][:bs] = context.context_lens
-            graph_vars["block_tables"][:bs, :context.block_tables.size(1)] = context.block_tables
-            graph.replay()
-            return self.model.compute_logits(graph_vars["outputs"][:bs])
+            if self.graph_mode == "copy":
+                # 구버전(Tier 3a 이전): 영속 버퍼 -> graph_vars로 매 스텝 복사
+                context = get_context()
+                graph = self.graphs[next(x for x in self.graph_bs if x >= bs)]
+                graph_vars = self.graph_vars
+                graph_vars["input_ids"][:bs] = input_ids
+                graph_vars["positions"][:bs] = positions
+                graph_vars["slot_mapping"].fill_(-1)
+                graph_vars["slot_mapping"][:bs] = context.slot_mapping
+                graph_vars["context_lens"].zero_()
+                graph_vars["context_lens"][:bs] = context.context_lens
+                graph_vars["block_tables"][:bs, :context.block_tables.size(1)] = context.block_tables
+                graph.replay()
+                return self.model.compute_logits(graph_vars["outputs"][:bs])
+            else:
+                # 신버전(Tier 3a): 영속 버퍼를 직접 읽음 (패딩 tail만 리셋)
+                cap_bs = next(x for x in self.graph_bs if x >= bs)
+                graph = self.graphs[cap_bs]
+                if bs < cap_bs:
+                    self._buf_slot_mapping[bs:cap_bs].fill_(-1)
+                    self._buf_context_lens[bs:cap_bs].zero_()
+                graph.replay()
+                return self.model.compute_logits(self._buf_outputs[:bs])
 
     def run(self, seqs: list[Sequence], is_prefill: bool) -> list[int]:
         if self.use_green_contexts:
@@ -325,38 +351,58 @@ class ModelRunner:
     def capture_cudagraph(self):
         config = self.config
         hf_config = config.hf_config
-        max_bs = min(self.config.max_num_seqs, 512)
+        max_bs = min(config.max_num_seqs, 512)
         max_num_blocks = (config.max_model_len + self.block_size - 1) // self.block_size
-        input_ids = torch.zeros(max_bs, dtype=torch.int64)
-        positions = torch.zeros(max_bs, dtype=torch.int64)
-        slot_mapping = torch.zeros(max_bs, dtype=torch.int32)
-        context_lens = torch.zeros(max_bs, dtype=torch.int32)
-        block_tables = torch.zeros(max_bs, max_num_blocks, dtype=torch.int32)
-        outputs = torch.zeros(max_bs, hf_config.hidden_size)
         self.graph_bs = [1, 2, 4, 8] + list(range(16, max_bs + 1, 16))
         self.graphs = {}
         self.graph_pool = None
 
-        for bs in reversed(self.graph_bs):
-            graph = torch.cuda.CUDAGraph()
-            set_context(False, slot_mapping=slot_mapping[:bs], context_lens=context_lens[:bs], block_tables=block_tables[:bs], use_cutile=self.use_cutile)
-            outputs[:bs] = self.model(input_ids[:bs], positions[:bs])    # warmup
-            with torch.cuda.graph(graph, self.graph_pool):
-                outputs[:bs] = self.model(input_ids[:bs], positions[:bs])    # capture
-            if self.graph_pool is None:
-                self.graph_pool = graph.pool()
-            self.graphs[bs] = graph
-            torch.cuda.synchronize()
-            reset_context()
-
-        self.graph_vars = dict(
-            input_ids=input_ids,
-            positions=positions,
-            slot_mapping=slot_mapping,
-            context_lens=context_lens,
-            block_tables=block_tables,
-            outputs=outputs,
-        )
+        if self.graph_mode == "copy":
+            # 구버전(Tier 3a 이전): 별도 graph_vars 정적 버퍼에 매 스텝 복사 후 replay
+            input_ids = torch.zeros(max_bs, dtype=torch.int64)
+            positions = torch.zeros(max_bs, dtype=torch.int64)
+            slot_mapping = torch.zeros(max_bs, dtype=torch.int32)
+            context_lens = torch.zeros(max_bs, dtype=torch.int32)
+            block_tables = torch.zeros(max_bs, max_num_blocks, dtype=torch.int32)
+            outputs = torch.zeros(max_bs, hf_config.hidden_size)
+            for bs in reversed(self.graph_bs):
+                graph = torch.cuda.CUDAGraph()
+                set_context(False, slot_mapping=slot_mapping[:bs], context_lens=context_lens[:bs], block_tables=block_tables[:bs], use_cutile=self.use_cutile)
+                outputs[:bs] = self.model(input_ids[:bs], positions[:bs])    # warmup
+                with torch.cuda.graph(graph, self.graph_pool):
+                    outputs[:bs] = self.model(input_ids[:bs], positions[:bs])    # capture
+                if self.graph_pool is None:
+                    self.graph_pool = graph.pool()
+                self.graphs[bs] = graph
+                torch.cuda.synchronize()
+                reset_context()
+            self.graph_vars = dict(
+                input_ids=input_ids,
+                positions=positions,
+                slot_mapping=slot_mapping,
+                context_lens=context_lens,
+                block_tables=block_tables,
+                outputs=outputs,
+            )
+        else:
+            # 신버전(Tier 3a): 영속 버퍼를 직접 읽는 그래프 (run_model에서 값 복사 불필요)
+            for bs in reversed(self.graph_bs):
+                graph = torch.cuda.CUDAGraph()
+                set_context(
+                    False,
+                    slot_mapping=self._buf_slot_mapping[:bs],
+                    context_lens=self._buf_context_lens[:bs],
+                    block_tables=self._buf_block_tables[:bs],
+                    use_cutile=self.use_cutile,
+                )
+                self._buf_outputs[:bs] = self.model(self._buf_input_ids[:bs], self._buf_positions[:bs])  # warmup
+                with torch.cuda.graph(graph, self.graph_pool):
+                    self._buf_outputs[:bs] = self.model(self._buf_input_ids[:bs], self._buf_positions[:bs])  # capture
+                if self.graph_pool is None:
+                    self.graph_pool = graph.pool()
+                self.graphs[bs] = graph
+                torch.cuda.synchronize()
+                reset_context()
 
 
 
