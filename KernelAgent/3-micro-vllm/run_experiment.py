@@ -166,6 +166,11 @@ def main() -> None:
                 "cmd": " ".join(cmd),
                 "graph_mode": mode,
                 "repeat": i + 1,
+                "nvidia_smi_after": run_cmd([
+                    "nvidia-smi",
+                    "--query-gpu=name,driver_version,clocks.sm,temperature.gpu,power.draw,utilization.gpu,memory.used,memory.total",
+                    "--format=csv,noheader",
+                ]),
                 "result": result,
             }
             print(json.dumps(record, ensure_ascii=False))

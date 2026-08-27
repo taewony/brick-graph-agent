@@ -41,7 +41,7 @@ def main():
     max_input_len = args.max_input_len
     max_ouput_len = args.max_output_len
 
-    path = args.model_path
+    path = os.path.expanduser(args.model_path)
     enforce_eager = args.enforce_eager or (args.use_cutile and not args.cutile_cudagraph)
     llm = LLM(path, enforce_eager=enforce_eager, max_model_len=args.max_model_len)
 
