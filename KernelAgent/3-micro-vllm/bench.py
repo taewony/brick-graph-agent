@@ -82,11 +82,13 @@ def main():
     print(f"Total: {total_tokens}tok, Time: {t:.2f}s, Throughput: {throughput:.2f}tok/s")
 
     import json
+    from nanovllm.layers.layernorm import get_rmsnorm_fallback_count
     result = {
         "type": "throughput_result",
         "total_tokens": total_tokens,
         "time_s": round(t, 4),
         "throughput_tok_s": round(throughput, 4),
+        "rmsnorm_fallback_count": get_rmsnorm_fallback_count(),
         "conditions": {
             "use_cutile": args.use_cutile,
             "cutile_prefill_strategy": args.cutile_prefill_strategy,

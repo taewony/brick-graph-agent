@@ -76,6 +76,36 @@ def test_rotary_embedding(device):
     else:
         print("❌ 오류: 벡터 크기가 변했습니다. 회전 연산이 틀렸을 수 있습니다.")
 
+def test_rmsnorm_parity(device):
+    """
+    [TDRE 03] RMSNorm fused(F.rms_norm) vs manual 수치 parity 검증
+    - Tier 2b 퓨전이 수동 구현과 수치적으로 동등한지 확인한다.
+    """
+    print(f"\n[Test 03] RMSNorm (fused vs manual) parity 검증 (디바이스: {device})")
+    fix_seed(42)
+    import torch.nn.functional as F
+
+    D = 128
+    eps = 1e-6
+    dtype = torch.bfloat16
+
+    x = torch.randn(4, 16, D, device=device, dtype=dtype)
+    w = torch.randn(D, device=device, dtype=dtype)
+
+    # 1. fused (F.rms_norm, 단일 커널)
+    fused = F.rms_norm(x, [D], w, eps)
+
+    # 2. manual reference (float32 누적)
+    xf = x.float()
+    var = xf.pow(2).mean(dim=-1, keepdim=True)
+    xf = xf * torch.rsqrt(var + eps)
+    manual = xf.to(dtype) * w
+
+    if compare_outputs(fused, manual, rtol=1e-2, atol=1e-2):
+        print("✅ RMSNorm parity passed! (fused == manual)")
+    else:
+        print("❌ RMSNorm parity failed!")
+
 if __name__ == "__main__":
     # GPU가 없으면 CPU에서 테스트 수행
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -83,4 +113,5 @@ if __name__ == "__main__":
     
     test_column_parallel_linear(device)
     test_rotary_embedding(device)
+    test_rmsnorm_parity(device)
 

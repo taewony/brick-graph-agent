@@ -2,6 +2,21 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+# fallback 발생 횟수 (논문 정합성용: 0이면 fused F.rms_norm이 정상 사용됨)
+_RMSNORM_FALLBACKS = 0
+_RMSNORM_WARNED = False
+
+
+def _report_fallback():
+    global _RMSNORM_WARNED
+    if not _RMSNORM_WARNED:
+        _RMSNORM_WARNED = True
+        print("WARNING: F.rms_norm failed; falling back to manual RMSNorm (fusion INACTIVE)")
+
+
+def get_rmsnorm_fallback_count() -> int:
+    return _RMSNORM_FALLBACKS
+
 
 class RMSNorm(nn.Module):
 
@@ -26,10 +41,13 @@ class RMSNorm(nn.Module):
         self,
         x: torch.Tensor,
     ) -> torch.Tensor:
+        global _RMSNORM_FALLBACKS
         # Tier 2b: 수동 RMSNorm(다수 커널) -> PyTorch fused rms_norm(단일 커널)
         try:
             return F.rms_norm(x, [x.shape[-1]], self.weight, self.eps)
         except Exception:
+            _RMSNORM_FALLBACKS += 1
+            _report_fallback()
             return self._rms_norm_manual(x)
 
     def add_rms_forward(
@@ -37,6 +55,7 @@ class RMSNorm(nn.Module):
         x: torch.Tensor,
         residual: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        global _RMSNORM_FALLBACKS
         orig_dtype = x.dtype
         # residual 연결은 정밀도 보존을 위해 float32 유지 (원본 동작과 동일)
         x = x.float().add_(residual.float())
@@ -45,6 +64,8 @@ class RMSNorm(nn.Module):
             # RMSNorm 본체만 fused 커널 사용 (float32 입력, weight는 이후 별도 적용)
             x = F.rms_norm(x, [x.shape[-1]], eps=self.eps)
         except Exception:
+            _RMSNORM_FALLBACKS += 1
+            _report_fallback()
             var = x.pow(2).mean(dim=-1, keepdim=True)
             x = x.mul_(torch.rsqrt(var + self.eps))
         x = x.to(orig_dtype).mul_(self.weight)
