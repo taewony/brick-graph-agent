@@ -2,9 +2,20 @@ import argparse
 import json
 import os
 import statistics
+import subprocess
 import time
 from pathlib import Path
 from random import Random
+
+
+def get_nvidia_smi():
+    try:
+        return subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,driver_version,clocks.sm,temperature.gpu,power.draw,utilization.gpu,memory.used,memory.total", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=30,
+        ).stdout.strip()
+    except Exception as e:
+        return f"ERROR: {e}"
 
 
 
@@ -240,6 +251,10 @@ def main():
         if condition not in {"no_cache", "warm_cache", "prefix_changed"}:
             raise ValueError(f"unknown condition: {condition}")
         run_condition(llm, condition, static_prefix, args, rows)
+
+    gpu_after = get_nvidia_smi()
+    rows.append({"type": "gpu_after", "nvidia_smi_after": gpu_after})
+    print(json.dumps({"type": "gpu_after", "nvidia_smi_after": gpu_after}, sort_keys=True))
 
     if args.out_jsonl:
         out_path = Path(args.out_jsonl)

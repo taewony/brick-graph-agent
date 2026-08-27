@@ -146,3 +146,78 @@ python run_experiment.py --use-cutile --cutile-prefill-strategy hybrid --out-jso
 | graph (copy 모드) | 397.93 tok/s |
 
 > 이 수치보다 ±5% 이상 벗어나면 위 8-3 표에 따라 원인을 판정한다.
+
+---
+
+## 9. Tier 2b 적용 내역 (RMSNorm 퓨전)
+
+**변경 파일**: `nanovllm/layers/layernorm.py`
+
+- `rms_forward`(q_norm/k_norm): 수동 RMSNorm(`float→pow→mean→rsqrt→mul→cast→mul`, 약 8커널) → **`F.rms_norm`(단일 fused 커널)**.
+- `add_rms_forward`(input/post layernorm): **float32 residual add는 유지**(정밀도 보존), RMSNorm 본체만 `F.rms_norm`으로 치환.
+- 기대: 레이어당 RMSNorm 관련 커널 수 감소 → WDDM 발사 지연 감소.
+
+> ⚠️ 수치적 동등성: `F.rms_norm`은 bf16에서 내부적으로 안정적 알고리즘 사용. 출력이 수동 구현과 미세하게 다를 수 있으나,
+> 처리량/TTFT/지연 같은 **성능 지표에는 무관**. (정확도 검증이 필요하면 `example.py` 출력 텍스트 품질 확인)
+
+---
+
+## 10. 논문 수치 재추출 프로토콜 (Windows)
+
+Tier 2b 적용 후, 아래 순서로 **모든 Windows 수치를 재측정**한다.
+각 실행은 `run_experiment.py`(처리량) 또는 해당 벤치 스크립트를 사용하며, `nvidia_smi`가 2900 MHz 근처(스로틀링 없음)인지 확인한다.
+
+### 10-1. 처리량 (§5.1, §5.2)
+
+```powershell
+cd KernelAgent\3-micro-vllm
+
+# ① eager-hybrid (기준)
+python run_experiment.py --use-cutile --cutile-prefill-strategy hybrid --out-jsonl baseline.jsonl
+
+# ② CUDA Graph (graph)
+python run_experiment.py --use-cutile --cutile-cudagraph --out-jsonl baseline.jsonl
+
+# ③ 프리필 전략 비교
+python run_experiment.py --use-cutile --cutile-prefill-strategy direct --out-jsonl baseline.jsonl
+python run_experiment.py --use-cutile --cutile-prefill-strategy padded --out-jsonl baseline.jsonl
+```
+
+### 10-2. 프리픽스 캐시 TTFT (§5.3)
+
+```powershell
+# 정적 프리픽스 1024 / 2048 / 3072 토큰
+python bench_prefix_cache.py --use-cutile --requests 8 --static-prefix-tokens 1024 --dynamic-suffix-tokens 64 --max-tokens 64 --out-jsonl prefix_1024.jsonl
+python bench_prefix_cache.py --use-cutile --requests 8 --static-prefix-tokens 2048 --dynamic-suffix-tokens 64 --max-tokens 64 --out-jsonl prefix_2048.jsonl
+python bench_prefix_cache.py --use-cutile --requests 8 --static-prefix-tokens 3072 --dynamic-suffix-tokens 64 --max-tokens 64 --out-jsonl prefix_3072.jsonl
+```
+
+각 `*_jsonl`의 `SUMMARY_JSON`에서 `mean_ttft_ms`, `cache_hit_ratio` 를 읽는다.
+
+### 10-3. 그린 컨텍스트 스트레스 (§5.6)
+
+```powershell
+python bench_green_stress.py --repeats 10 --green-api cuda_core --prefill-sms 32 --decode-sms 16
+```
+
+### 10-4. WSL2 FlashAttention 기준선 (§5.1, ⚠️ Linux 전용)
+
+Windows에서 재측정 불가. **WSL2 환경에서 별도 실행**해야 한다:
+
+```bash
+cd micro-vllm
+python bench.py   # flash_attn 백엔드 (NANO_VLLM_USE_CUTILE 미설정)
+```
+
+---
+
+## 11. 논문 수치 재현 상태 체크리스트
+
+| 항목 | Windows 재측정 가능 | 명령 |
+|---|---|---|
+| eager-hybrid 처리량 | ✅ | 10-1 ① |
+| CUDA Graph 처리량 | ✅ | 10-1 ② |
+| direct/padded 프리필 | ✅ | 10-1 ③ |
+| 프리픽스 캐시 TTFT | ✅ | 10-2 |
+| 그린 컨텍스트 | ✅ | 10-3 |
+| WSL2 FlashAttention | ❌ (Linux) | 10-4 |

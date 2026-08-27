@@ -22,6 +22,16 @@ from pathlib import Path
 from random import randint, seed
 
 
+def get_nvidia_smi():
+    try:
+        return subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,driver_version,clocks.sm,temperature.gpu,power.draw,utilization.gpu,memory.used,memory.total", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=30,
+        ).stdout.strip()
+    except Exception as e:
+        return f"ERROR: {e}"
+
+
 LOWER_IS_BETTER = {
     "decode_step_p50_ms",
     "decode_step_p95_ms",
@@ -201,6 +211,7 @@ def run_stress_case(args: argparse.Namespace, use_green: bool) -> dict:
     }
     if args.trace_steps:
         result["trace"] = event_trace
+    result["nvidia_smi_after"] = get_nvidia_smi()
     print("RESULT_JSON:" + json.dumps(result, ensure_ascii=False))
     return result
 
